@@ -1,0 +1,1504 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Prevention & Screening Tool</title>
+
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card:#111a2c;
+      --muted:#9fb1d1;
+      --text:#e8efff;
+      --line:rgba(255,255,255,.10);
+      --ok:#3ddc97;
+      --due:#ffcc66;
+      --hi:#ff6b6b;
+      --btn:#1e2d4e;
+      --btn2:#24385f;
+      --shadow:0 18px 45px rgba(0,0,0,.35);
+      --radius:18px;
+      --radius2:14px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      background:
+        radial-gradient(900px 520px at 20% 15%, rgba(67,114,255,.20), transparent 60%),
+        radial-gradient(780px 520px at 80% 20%, rgba(61,220,151,.12), transparent 60%),
+        radial-gradient(900px 520px at 70% 90%, rgba(255,204,102,.10), transparent 60%),
+        var(--bg);
+      color:var(--text);
+    }
+    a{color:inherit}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    .topbar{
+      display:flex;gap:14px;align-items:center;justify-content:space-between;
+      padding:14px 16px;
+      background:rgba(17,26,44,.85);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{
+      width:44px;height:44px;border-radius:14px;
+      background:linear-gradient(135deg, rgba(67,114,255,.9), rgba(61,220,151,.8));
+      display:grid;place-items:center;
+      border:1px solid rgba(255,255,255,.18);
+    }
+    .logo span{font-weight:900;color:#071126;letter-spacing:.5px}
+    .title{line-height:1.1}
+    .title h1{margin:0;font-size:18px}
+    .title p{margin:4px 0 0;color:var(--muted);font-size:12px}
+
+    .nav{
+      display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;
+    }
+    .tab{
+      border:1px solid var(--line);
+      background:var(--btn);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:13px;
+      transition:.15s ease;
+      user-select:none;
+    }
+    .tab:hover{background:var(--btn2)}
+    .tab.active{
+      outline:2px solid rgba(67,114,255,.55);
+      background:rgba(67,114,255,.20);
+    }
+
+    .grid{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap:14px;
+    }
+    @media (max-width: 920px){
+      .grid{grid-template-columns:1fr}
+      .nav{justify-content:flex-start}
+    }
+
+    .card{
+      background:rgba(17,26,44,.88);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:14px 16px;
+      border-bottom:1px solid var(--line);
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+    }
+    .card .hd h2{margin:0;font-size:15px}
+    .card .hd .sub{margin:4px 0 0;color:var(--muted);font-size:12px}
+    .card .bd{padding:14px 16px}
+
+    .note{
+      padding:12px 12px;
+      border:1px dashed rgba(255,255,255,.22);
+      border-radius:var(--radius2);
+      color:var(--muted);
+      background:rgba(255,255,255,.04);
+      font-size:13px;
+      line-height:1.4;
+    }
+
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .field{display:flex;flex-direction:column;gap:6px;min-width:180px;flex:1}
+    label{font-size:12px;color:var(--muted);font-weight:700}
+    input,select,textarea{
+      width:100%;
+      padding:10px 11px;
+      background:rgba(7,17,38,.65);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:12px;
+      color:var(--text);
+      font-size:14px;
+      outline:none;
+    }
+    input::placeholder,textarea::placeholder{color:rgba(159,177,209,.75)}
+    textarea{min-height:110px;resize:vertical;font-family:var(--mono);font-size:12.5px}
+
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .btn{
+      border:1px solid var(--line);
+      background:var(--btn);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:800;
+      font-size:13px;
+      transition:.15s ease;
+      user-select:none;
+    }
+    .btn:hover{background:var(--btn2)}
+    .btn.primary{background:rgba(61,220,151,.16); outline:2px solid rgba(61,220,151,.25)}
+    .btn.danger{background:rgba(255,107,107,.14); outline:2px solid rgba(255,107,107,.22)}
+
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.04);
+      font-size:12px;color:var(--muted);font-weight:700;
+    }
+    .dot{width:10px;height:10px;border-radius:999px;background:rgba(255,255,255,.35)}
+    .dot.ok{background:var(--ok)}
+    .dot.due{background:var(--due)}
+    .dot.hi{background:var(--hi)}
+
+    .bucket{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(7,17,38,.55);
+      border-radius:14px;
+      padding:10px 12px;
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      margin:8px 0;
+    }
+    .bucket b{font-size:13px}
+    .bucket small{color:var(--muted)}
+    .bucket select{max-width:180px}
+
+    .results .item{
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(7,17,38,.55);
+      border-radius:16px;
+      padding:12px;
+      margin:10px 0;
+    }
+    .results .item .top{
+      display:flex;gap:10px;align-items:center;justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .badge{
+      display:inline-flex;gap:8px;align-items:center;
+      padding:7px 10px;border-radius:999px;font-weight:900;font-size:12px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.06);
+    }
+    .badge.ok{color:var(--ok)}
+    .badge.due{color:var(--due)}
+    .badge.high{color:var(--hi)}
+    .results .item .msg{margin:8px 0 0;color:var(--text);font-size:13.5px;line-height:1.35}
+    .results .item .src{margin:8px 0 0;color:var(--muted);font-size:12px}
+
+    .footer{
+      margin-top:12px;
+      text-align:center;
+      color:rgba(159,177,209,.75);
+      font-size:12px;
+      padding:10px 0 2px;
+    }
+    .footer b{color:rgba(232,239,255,.85)}
+    .tiny{font-size:11px;color:rgba(159,177,209,.65)}
+	
+	.riskGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+}
+@media (max-width:720px){ .riskGrid{grid-template-columns:1fr} }
+
+.riskChip{
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(7,17,38,.55);
+  border-radius:14px;
+  padding:12px 12px;
+  cursor:pointer;
+  user-select:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  transition:.15s ease;
+}
+.riskChip:hover{background:rgba(7,17,38,.70)}
+.riskChip.on{
+  outline:2px solid rgba(67,114,255,.55);
+  background:rgba(67,114,255,.18);
+}
+.riskChip b{font-size:13px}
+.riskChip small{color:var(--muted);font-weight:700;font-size:12px}
+.riskChip .tag{
+  font-weight:900;
+  font-size:11px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.06);
+  color:rgba(232,239,255,.88);
+}
+.riskChip.on .tag{
+  border-color: rgba(67,114,255,.55);
+  background: rgba(67,114,255,.20);
+}
+
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"><span>PS</span></div>
+        <div class="title">
+          <h1>Prevention & Screening</h1>
+          <p>Evidence-based screening reminders (USPSTF-focused). All content in English.</p>
+        </div>
+      </div>
+
+      <div class="nav" id="navTabs">
+        <div class="tab active" data-page="welcome">Welcome</div>
+        <div class="tab" data-page="demographics">Demographics</div>
+        <div class="tab" data-page="risks">Risk Factors</div>
+        <div class="tab" data-page="screening">Screening Status</div>
+        <div class="tab" data-page="results">Results</div>
+        <div class="tab" data-page="export">Export</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="hd">
+          <div>
+            <h2 id="leftTitle">Welcome</h2>
+            <div class="sub" id="leftSub">How this tool works + sources used</div>
+          </div>
+          <div class="pill" id="statusPill" title="Internal status">
+            <span class="dot" id="statusDot"></span>
+            <span id="statusText">Ready</span>
+          </div>
+        </div>
+        <div class="bd" id="leftPane"></div>
+      </div>
+
+      <div class="card">
+        <div class="hd">
+          <div>
+            <h2 id="rightTitle">Quick Summary</h2>
+            <div class="sub" id="rightSub">Age, BMI, and key flags</div>
+          </div>
+        </div>
+        <div class="bd" id="rightPane"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div><span class="tiny">programed by</span> <b>Dr. Abdullah Hosni Alreedy</b></div>
+      <div class="tiny">Prevention & Screening Tool</div>
+    </div>
+  </div>
+
+  <script>
+/* =========================================================
+   GLOBAL STATE
+   ========================================================= */
+
+const state = {
+  page: "welcome",
+
+ demographics: {
+  age: null,
+  sex: null,                // "male" | "female"
+  pregnant: "na",           // "yes" | "no" | "unknown" | "na"
+  lmp: null,                // "YYYY-MM-DD"
+  gaWeeks: null,            // number (calculated)
+  edd: null,                // "YYYY-MM-DD" (calculated)
+  height: null,             // cm
+  weight: null              // kg
+},
+
+
+  bmi: null,
+
+  risks: {
+    dm: false,
+    htn: false,
+    dyslip: false,
+    ckd: false,
+    smoker: false,
+    obesity: false,
+    fh_crc_early: false,
+    fh_breast_early: false,
+    immunocompromised: false
+  },
+
+  screening: {
+  htn: "unknown",
+  dm: "unknown",
+  lipids: "unknown",
+  crc: "unknown",
+  breast: "unknown",
+  cervical: "unknown",
+  osteoporosis: "unknown",
+  aaa: "unknown",
+  depression: "unknown",
+  hiv: "unknown",
+  hcv: "unknown",
+
+  // Pregnancy follow-up module
+  preg_booking_labs: "unknown",
+  preg_cfdna: "unknown",
+  preg_nt: "unknown",
+  preg_anatomy_us: "unknown",
+  preg_edd_confirm_us: "unknown",
+  preg_gdm: "unknown",
+  preg_tdap: "unknown"
+},
+
+  results: []
+};
+
+/* =========================================================
+   UTILITIES
+   ========================================================= */
+
+const $ = id => document.getElementById(id);
+
+function setStatus(text, type="ok"){
+  $("statusText").textContent = text;
+  $("statusDot").className = "dot " + (type==="due"?"due":type==="hi"?"hi":"ok");
+}
+
+function bmiCalc(){
+  const {height, weight} = state.demographics;
+  if(!height || !weight) return null;
+  const h = height / 100;
+  return Math.round((weight / (h*h)) * 10) / 10;
+}
+
+function riskCount(){
+  return Object.values(state.risks).filter(v=>v).length;
+}
+function parseISODate(s){
+  if(!s) return null;
+  const d = new Date(s + "T00:00:00");
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function formatISODate(d){
+  if(!d) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+
+function calcGAandEDD(){
+  const d = state.demographics;
+  if(d.sex !== "female" || d.pregnant !== "yes" || !d.lmp){
+    d.gaWeeks = null;
+    d.edd = null;
+    return;
+  }
+
+  const lmpDate = parseISODate(d.lmp);
+  if(!lmpDate){
+    d.gaWeeks = null;
+    d.edd = null;
+    return;
+  }
+
+  const today = new Date();
+  const diffMs = today.getTime() - lmpDate.getTime();
+  const diffDays = Math.floor(diffMs / (1000*60*60*24));
+
+  // GA in weeks (allow 0+; if negative, keep null)
+  if(diffDays < 0){
+    d.gaWeeks = null;
+    d.edd = null;
+    return;
+  }
+
+  d.gaWeeks = Math.round((diffDays / 7) * 10) / 10;
+
+  // EDD = LMP + 280 days
+  const eddDate = new Date(lmpDate.getTime() + 280*24*60*60*1000);
+  d.edd = formatISODate(eddDate);
+}
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    tab.classList.add("active");
+    state.page = tab.dataset.page;
+    render();
+  });
+});
+
+/* =========================================================
+   MAIN RENDER DISPATCH
+   ========================================================= */
+
+function render(){
+  renderRightPane();
+
+  switch(state.page){
+    case "welcome":       renderWelcome(); break;
+    case "demographics":  renderDemographics(); break;
+    case "risks":         renderRisks(); break;
+    case "screening":     renderScreening(); break;
+    case "results":       renderResults(); break;
+    case "export":        renderExport(); break;
+  }
+}
+
+/* =========================================================
+   RIGHT PANE (SUMMARY)
+   ========================================================= */
+
+function renderRightPane(){
+  const d = state.demographics;
+  state.bmi = bmiCalc();
+  // Auto-derive obesity from BMI (clinical logic)
+if(state.bmi !== null && state.bmi >= 30){
+  state.risks.obesity = true;
+} else {
+  state.risks.obesity = false;
+}
+
+
+  // Pregnancy GA/EDD calculation
+  calcGAandEDD();
+
+  const pregLine = (d.sex==="female" && d.pregnant==="yes")
+    ? `<div class="pill"><span class="dot ok"></span> GA (weeks): ${d.gaWeeks ?? "—"}</div>
+       <div class="pill"><span class="dot ok"></span> EDD: ${d.edd ?? "—"}</div>`
+    : "";
+
+  $("rightPane").innerHTML = `
+    <div class="pill"><span class="dot ok"></span> Age: ${d.age ?? "—"}</div>
+    <div class="pill"><span class="dot ok"></span> Sex: ${d.sex ?? "—"}</div>
+    ${pregLine}
+    <div class="pill"><span class="dot ok"></span> BMI: ${state.bmi ?? "—"}</div>
+    <div class="pill"><span class="dot ${riskCount() ? "due":"ok"}"></span>
+      Risk flags: ${riskCount()}
+    </div>
+  `;
+}
+
+
+/* =========================================================
+   PAGE: WELCOME
+   ========================================================= */
+
+function renderWelcome(){
+  $("leftTitle").textContent = "Welcome";
+  $("leftSub").textContent = "Purpose + evidence sources (clickable)";
+  setStatus("Ready");
+
+  const sources = [
+    { name:"USPSTF A & B Recommendations (Index)", url:"https://www.uspreventiveservicestaskforce.org/uspstf/recommendation-topics/uspstf-a-and-b-recommendations" },
+    { name:"USPSTF: Hypertension in Adults: Screening", url:"https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/high-blood-pressure-in-adults-screening" },
+    { name:"USPSTF: Prediabetes and Type 2 Diabetes: Screening", url:"https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/screening-for-prediabetes-and-type-2-diabetes" },
+    { name:"USPSTF: Colorectal Cancer: Screening", url:"https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/colorectal-cancer-screening" },
+    { name:"USPSTF: Cervical Cancer: Screening", url:"https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/cervical-cancer-screening" },
+    { name:"USPSTF: Osteoporosis to Prevent Fractures: Screening", url:"https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/osteoporosis-screening" },
+    { name:"USPSTF: Abdominal Aortic Aneurysm: Screening", url:"https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/abdominal-aortic-aneurysm-screening" },
+    { name:"USPSTF: HIV Infection: Screening", url:"https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/human-immunodeficiency-virus-hiv-infection-screening" },
+    { name:"USPSTF: Hepatitis C Virus Infection: Screening", url:"https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/hepatitis-c-screening" }
+  ];
+
+  const links = sources.map(s =>
+    `<li><a href="${s.url}" target="_blank" rel="noopener noreferrer">${s.name}</a></li>`
+  ).join("");
+
+  $("leftPane").innerHTML = `
+    <div class="note">
+      <b>Purpose:</b><br>
+      Generate evidence-based preventive screening prompts, then <b>copy/paste</b> into the HIS.<br><br>
+
+      <b>Scope:</b><br>
+      Adult preventive care only (≥18 years).<br><br>
+
+      <b>Evidence sources (click to open):</b>
+      <ul>${links}</ul>
+
+      <b>Data safety:</b><br>
+      No patient identifiers are stored. All data remains in-browser.
+    </div>
+
+    <div class="btns">
+      <button class="btn primary" onclick="goto('demographics')">Start</button>
+    </div>
+  `;
+}
+
+
+function goto(page){
+  document.querySelector(`.tab[data-page="${page}"]`).click();
+}
+
+/* =========================================================
+   PAGE: DEMOGRAPHICS
+   ========================================================= */
+
+function renderDemographics(){
+  $("leftTitle").textContent = "Demographics";
+  $("leftSub").textContent = "Age, sex, BMI inputs";
+  setStatus("Input");
+
+  const d = state.demographics;
+
+  $("leftPane").innerHTML = `
+    <div class="row">
+      <div class="field">
+        <label>Age (years)</label>
+        <input type="number" min="0" max="120" value="${d.age ?? ""}"
+          onchange="state.demographics.age=this.value?Number(this.value):null; renderRightPane();">
+      </div>
+
+      <div class="field">
+        <label>Sex</label>
+       <select onchange="
+  state.demographics.sex=this.value;
+
+  // If not female, hard reset pregnancy-related fields
+  if(this.value!=='female'){
+    state.demographics.pregnant='na';
+    state.demographics.lmp=null;
+    state.demographics.gaWeeks=null;
+    state.demographics.edd=null;
+  }
+
+  renderRightPane();
+  renderDemographics();
+">
+          <option value="">—</option>
+          <option value="male" ${d.sex==="male"?"selected":""}>Male</option>
+          <option value="female" ${d.sex==="female"?"selected":""}>Female</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Height (cm)</label>
+        <input type="number" min="50" max="250" value="${d.height ?? ""}"
+          onchange="state.demographics.height=this.value?Number(this.value):null; renderRightPane();">
+      </div>
+
+      <div class="field">
+        <label>Weight (kg)</label>
+        <input type="number" min="10" max="300" value="${d.weight ?? ""}"
+          onchange="state.demographics.weight=this.value?Number(this.value):null; renderRightPane();">
+      </div>
+    </div>
+
+${
+  (d.sex==="female")
+  ? `
+    <div style="height:10px"></div>
+
+    <div class="row">
+      <div class="field">
+        <label>Pregnancy</label>
+        <select onchange="
+          state.demographics.pregnant=this.value;
+
+          // If pregnancy is not YES, clear LMP/GA/EDD
+          if(this.value!=='yes'){
+            state.demographics.lmp=null;
+            state.demographics.gaWeeks=null;
+            state.demographics.edd=null;
+          }
+
+          renderRightPane();
+          renderDemographics();
+        ">
+          <option value="unknown" ${d.pregnant==="unknown"?"selected":""}>Unknown</option>
+          <option value="no" ${d.pregnant==="no"?"selected":""}>No</option>
+          <option value="yes" ${d.pregnant==="yes"?"selected":""}>Yes</option>
+        </select>
+      </div>
+    </div>
+
+    ${
+      (d.pregnant==="yes")
+      ? `
+        <div class="row">
+          <div class="field">
+            <label>LMP (Gregorian)</label>
+            <input type="date" value="${d.lmp ?? ""}"
+              onchange="state.demographics.lmp=this.value || null; renderRightPane(); renderDemographics();">
+          </div>
+
+          <div class="field">
+            <label>GA (weeks) — auto</label>
+            <input type="text" value="${d.gaWeeks ?? ""}" readonly>
+          </div>
+
+          <div class="field">
+            <label>EDD — auto</label>
+            <input type="text" value="${d.edd ?? ""}" readonly>
+          </div>
+        </div>
+      `
+      : ``
+    }
+  `
+  : ``
+}
+
+
+    <div class="btns">
+      <button class="btn" onclick="goto('risks')">Next</button>
+    </div>
+  `;
+}
+
+/* =========================================================
+   PAGE: RISK FACTORS
+   ========================================================= */
+
+function renderRisks(){
+  $("leftTitle").textContent = "Risk Factors";
+  $("leftSub").textContent = "Click to toggle (highlighted when ON)";
+  setStatus("Risk selection");
+
+  const r = state.risks;
+
+  const items = [
+    { key:"dm", label:"Diabetes mellitus", note:"Known DM (affects screening logic)" },
+    { key:"htn", label:"Hypertension", note:"Known HTN" },
+    { key:"dyslip", label:"Dyslipidemia", note:"Known dyslipidemia" },
+    { key:"ckd", label:"Chronic kidney disease", note:"CKD (risk modifier)" },
+    { key:"smoker", label:"Smoker", note:"Ever/current smoker (AAA rule uses this)" },
+    { key:"immunocompromised", label:"Immunocompromised", note:"Risk modifier" },
+    { key:"fh_crc_early", label:"FHx CRC (early)", note:"Family history (early) CRC" },
+    { key:"fh_breast_early", label:"FHx Breast ca (early)", note:"Family history (early) breast ca" }
+  ];
+
+  function chip(it){
+    const on = !!r[it.key];
+    return `
+      <div class="riskChip ${on ? "on" : ""}"
+           onclick="toggleRisk('${it.key}')">
+        <div>
+          <b>${it.label}</b><br>
+          <small>${it.note}</small>
+        </div>
+        <div class="tag">${on ? "ON" : "OFF"}</div>
+      </div>
+    `;
+  }
+
+  $("leftPane").innerHTML = `
+    <div class="note">
+      Click a risk factor to toggle it. Selected items highlight automatically.
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="riskGrid">
+      ${items.map(chip).join("")}
+    </div>
+
+    <div class="btns">
+      <button class="btn" onclick="goto('screening')">Next</button>
+    </div>
+  `;
+}
+
+function toggleRisk(key){
+  state.risks[key] = !state.risks[key];
+  renderRightPane();
+  renderRisks();
+}
+
+
+/* =========================================================
+   PAGE: SCREENING STATUS
+   ========================================================= */
+
+function renderScreening(){
+  $("leftTitle").textContent = "Screening Status";
+  $("leftSub").textContent = "Only relevant items shown (demographics + pregnancy GA)";
+  setStatus("Screening status");
+
+  const d = state.demographics;
+  const r = state.risks;
+  const s = state.screening;
+  const bmi = state.bmi;
+
+  const isAdult = (d.age !== null && d.age >= 18);
+  const isFemale = (d.sex === "female");
+  const isMale = (d.sex === "male");
+  const isPreg = (isFemale && d.pregnant === "yes");
+
+  // Ensure GA/EDD are up to date
+  calcGAandEDD();
+  const ga = d.gaWeeks; // number or null
+
+  function bucketRow(title, key, help=""){
+    return `
+      <div class="bucket">
+        <div>
+          <b>${title}</b><br>
+          <small>${help}</small>
+        </div>
+        <select onchange="state.screening.${key}=this.value">
+          <option value="unknown" ${s[key]==="unknown"?"selected":""}>Unknown</option>
+          <option value="recent" ${s[key]==="recent"?"selected":""}>Done recent</option>
+          <option value="overdue" ${s[key]==="overdue"?"selected":""}>Overdue</option>
+          <option value="never" ${s[key]==="never"?"selected":""}>Never</option>
+        </select>
+      </div>
+    `;
+  }
+
+  if(!isAdult){
+    $("leftPane").innerHTML = `
+      <div class="note">
+        Enter <b>Age ≥ 18</b> to enable adult preventive screening rules.
+      </div>
+      <div class="btns">
+        <button class="btn" onclick="goto('demographics')">Back to Demographics</button>
+      </div>
+    `;
+    return;
+  }
+
+  const show = [];
+
+  // Adult core
+  show.push({section:"Core", title:"Blood pressure screening (HTN)", key:"htn", help:"Adults ≥18 (risk-based frequency)."});
+  const eligibleDM = !r.dm && d.age >= 35 && d.age <= 70 && ((bmi !== null && bmi >= 25) || r.obesity);
+  if(eligibleDM) show.push({section:"Core", title:"Diabetes screening (if not known DM)", key:"dm", help:"35–70 with overweight/obesity."});
+
+  const higherRiskLipids = r.dm || r.htn || r.ckd || r.smoker || r.dyslip || r.obesity || (bmi !== null && bmi >= 30);
+  if(d.age >= 20 || higherRiskLipids) show.push({section:"Core", title:"Lipid panel / ASCVD risk assessment", key:"lipids", help:"Risk/policy dependent."});
+
+  show.push({section:"Core", title:"Depression screening", key:"depression", help:"PHQ-2/PHQ-9 where systems exist."});
+
+  if(d.age >= 18 && d.age <= 65) show.push({section:"Infections", title:"HIV screening", key:"hiv", help:"One-time + risk-based repeats."});
+  if(d.age >= 18 && d.age <= 79) show.push({section:"Infections", title:"Hepatitis C screening", key:"hcv", help:"One-time + risk-based repeats."});
+
+  // Cancer
+  if(d.age >= 45 && d.age <= 85) show.push({section:"Cancer", title:"Colorectal cancer screening", key:"crc", help:"45–75 routine; 76–85 selective."});
+
+  if(isFemale){
+    if(d.age >= 21 && d.age <= 65) show.push({section:"Women", title:"Cervical cancer screening", key:"cervical", help:"21–65 (method/interval depends on age/test)."});
+    if(d.age >= 40) show.push({section:"Women", title:"Breast cancer screening", key:"breast", help:"Institution policy dependent (often from 40+)."});
+    if(d.age >= 65 || (d.age >= 50 && (r.smoker || r.ckd || r.dm)))
+      show.push({section:"Women", title:"Osteoporosis screening", key:"osteoporosis", help:"Women ≥65 or younger high-risk."});
+  }
+
+  if(isMale && d.age >= 65 && d.age <= 75 && r.smoker)
+    show.push({section:"Men", title:"AAA screening (ultrasound)", key:"aaa", help:"One-time for men 65–75 ever-smoker."});
+
+  // ============================
+  // Pregnancy follow-up module
+  // Show ONLY if pregnant
+  // And show ONLY items due by GA window
+  // ============================
+  if(isPreg){
+    // If GA not computable, still allow booking items display
+    const gaNote = (ga === null) ? "GA not calculated (enter LMP) — showing core pregnancy items." : `GA: ${ga} weeks; EDD: ${d.edd ?? "—"}.`;
+
+    // Booking labs: ideally early pregnancy (ACOG: CBC, blood type/Rh, urinalysis, urine culture, etc.) :contentReference[oaicite:6]{index=6}
+    // Show if GA <= 14 OR unknown GA
+    if(ga === null || ga <= 14){
+      show.push({
+        section:"Pregnancy (by GA)",
+        title:"Booking labs (early pregnancy)",
+        key:"preg_booking_labs",
+        help:"CBC, blood type & Rh, urinalysis + urine culture (early pregnancy baseline)."
+      });
+    }
+
+    // cfDNA/NIPT: offered as screening option for all (typical timing ≥10 weeks). :contentReference[oaicite:7]{index=7}
+    if(ga !== null && ga >= 10 && ga <= 22){
+      show.push({
+        section:"Pregnancy (by GA)",
+        title:"DNA analysis (cfDNA / NIPT)",
+        key:"preg_cfdna",
+        help:"Chromosomal screening option (commonly from ≥10 weeks)."
+      });
+    }
+
+    // NT window: 11–13+6 (common practice window)
+    if(ga !== null && ga >= 11 && ga <= 13.9){
+      show.push({
+        section:"Pregnancy (by GA)",
+        title:"Nuchal translucency (NT) ultrasound window",
+        key:"preg_nt",
+        help:"Best performed in the first trimester window (≈11–13+6 weeks)."
+      });
+    }
+
+    // EDD confirmation / dating ultrasound before 22w is important (suboptimally dated otherwise). :contentReference[oaicite:8]{index=8}
+    if(ga !== null && ga <= 22){
+      show.push({
+        section:"Pregnancy (by GA)",
+        title:"Dating / EDD confirmation ultrasound (if not already done)",
+        key:"preg_edd_confirm_us",
+        help:"Confirm/revise EDD with ultrasound before 22 weeks when possible."
+      });
+    }
+
+    // Anatomy scan: standard US usually 18–22 weeks. :contentReference[oaicite:9]{index=9}
+    if(ga !== null && ga >= 18 && ga <= 22.5){
+      show.push({
+        section:"Pregnancy (by GA)",
+        title:"Anatomy ultrasound (standard scan)",
+        key:"preg_anatomy_us",
+        help:"Standard exam is usually performed at 18–22 weeks."
+      });
+    }
+
+    // GDM screening: 24–28 weeks. :contentReference[oaicite:10]{index=10}
+    if(ga !== null && ga >= 24 && ga <= 28.5){
+      show.push({
+        section:"Pregnancy (by GA)",
+        title:"Gestational diabetes screening (GDM)",
+        key:"preg_gdm",
+        help:"Screen between 24–28 weeks (earlier if high risk per policy)."
+      });
+    }
+
+    // Tdap: 27–36 weeks. :contentReference[oaicite:11]{index=11}
+    if(ga !== null && ga >= 27 && ga <= 36.9){
+      show.push({
+        section:"Pregnancy (by GA)",
+        title:"Tdap vaccine (each pregnancy)",
+        key:"preg_tdap",
+        help:"Give between 27–36 weeks (as early in the window as possible)."
+      });
+    }
+
+    // Add a contextual note if pregnant
+    show.unshift({
+      section:"Pregnancy (by GA)",
+      title:"Pregnancy context",
+      key:null,
+      help: gaNote
+    });
+  }
+
+  // Render by sections
+  const sections = ["Core","Cancer","Women","Men","Infections","Pregnancy (by GA)"];
+
+  let html = `
+    <div class="note">
+      Only relevant items are displayed based on <b>age/sex</b>.
+      Pregnancy items appear only if <b>Sex=Female</b> and <b>Pregnancy=Yes</b>, and are filtered by <b>GA</b>.
+    </div>
+  `;
+
+  sections.forEach(sec=>{
+    const items = show.filter(x=>x.section===sec);
+    if(!items.length) return;
+
+    html += `<h3 style="margin:12px 0 6px;font-size:13px;color:rgba(232,239,255,.9)">${sec}</h3>`;
+
+    items.forEach(it=>{
+      if(it.key === null){
+        html += `<div class="note" style="margin:8px 0">${it.help}</div>`;
+      } else {
+        html += bucketRow(it.title, it.key, it.help);
+      }
+    });
+  });
+
+  html += `
+    <div class="btns">
+      <button class="btn" onclick="goto('results')">Generate Results</button>
+      <button class="btn" onclick="goto('risks')">Back</button>
+    </div>
+  `;
+
+  $("leftPane").innerHTML = html;
+}
+
+
+
+/* =========================================================
+   EVALUATION ENGINE
+   ========================================================= */
+
+function evaluateAll(){
+  const d = state.demographics;
+  const r = state.risks;
+  const s = state.screening;
+  const bmi = state.bmi;
+
+  const recs = [];
+  const addRec = (status, title, detail, source) => recs.push({ status, title, detail, source });
+
+  const isAdult = (d.age !== null && d.age >= 18);
+  const isFemale = (d.sex === "female");
+  const isMale = (d.sex === "male");
+
+  const isUpToDate = (bucket) => bucket === "recent";
+  const rank = { "DUE": 0, "CONSIDER": 1, "OK": 2 };
+
+  if(!isAdult){
+    addRec("CONSIDER","Age not in adult range",
+      "This tool applies adult screening rules (≥18). Enter age ≥18 to activate recommendations.",
+      "Tool scope");
+    state.results = recs;
+    return;
+  }
+
+  // 1) HTN
+  {
+    const highRisk = r.dm || r.ckd || r.smoker || r.obesity || (bmi !== null && bmi >= 30);
+    if(isUpToDate(s.htn)){
+      addRec("OK","Blood pressure screening","Up to date (per entered bucket).","USPSTF: Hypertension Screening (Adults)");
+    } else {
+      addRec("DUE","Blood pressure screening",
+        highRisk ? "Due: screen at least annually due to higher CVD risk."
+                 : "Due: screen at least every 3–5 years if previously normal; confirm elevated readings outside clinic when appropriate.",
+        "USPSTF: Hypertension Screening (Adults)");
+    }
+  }
+
+  // 2) DM screening
+  {
+    const eligible = !r.dm && d.age >= 35 && d.age <= 70 && ((bmi !== null && bmi >= 25) || r.obesity);
+    if(!eligible){
+      addRec("OK","Prediabetes / Type 2 diabetes screening",
+        r.dm ? "Known diabetes selected (screening rule not applicable)."
+             : "Not routinely indicated based on age/BMI rule (USPSTF threshold).",
+        "USPSTF: Prediabetes & Type 2 Diabetes Screening");
+    } else {
+      addRec(isUpToDate(s.dm) ? "OK" : "DUE",
+        "Prediabetes / Type 2 diabetes screening",
+        isUpToDate(s.dm) ? "Up to date (per entered bucket)."
+                         : "Due: screen using HbA1c, fasting plasma glucose, or OGTT per local protocol.",
+        "USPSTF: Prediabetes & Type 2 Diabetes Screening");
+    }
+  }
+
+  // 3) CRC
+  {
+    if(d.age >= 45 && d.age <= 75){
+      addRec(isUpToDate(s.crc) ? "OK" : "DUE",
+        "Colorectal cancer screening",
+        isUpToDate(s.crc) ? "Up to date (per entered bucket)."
+                          : "Due: offer CRC screening (method/interval per local protocol: FIT yearly, stool DNA q1–3y, colonoscopy q10y, etc.).",
+        "USPSTF: Colorectal Cancer Screening");
+    } else if(d.age >= 76 && d.age <= 85){
+      addRec("CONSIDER","Colorectal cancer screening",
+        "Selective screening: consider overall health, prior screening history, and patient preferences.",
+        "USPSTF: Colorectal Cancer Screening");
+    } else {
+      addRec("OK","Colorectal cancer screening",
+        "Not routinely indicated outside the USPSTF age bands.",
+        "USPSTF: Colorectal Cancer Screening");
+    }
+  }
+
+  // 4) Cervical
+  if(isFemale){
+    if(d.age >= 21 && d.age <= 65){
+      addRec(isUpToDate(s.cervical) ? "OK" : "DUE",
+        "Cervical cancer screening",
+        isUpToDate(s.cervical) ? "Up to date (per entered bucket)."
+                               : "Due: screen per local protocol (Pap/HPV method and intervals depend on age and test type).",
+        "USPSTF: Cervical Cancer Screening");
+    } else {
+      addRec("OK","Cervical cancer screening",
+        "Not routinely indicated outside USPSTF age band (21–65).",
+        "USPSTF: Cervical Cancer Screening");
+    }
+  }
+
+  // 5) Breast (kept guideline-dependent)
+  if(isFemale){
+    if(d.age >= 40){
+      addRec(isUpToDate(s.breast) ? "OK" : "CONSIDER",
+        "Breast cancer screening",
+        isUpToDate(s.breast) ? "Up to date (per entered bucket)."
+                             : "Consider mammography per institutional policy and risk profile.",
+        "Guideline-dependent (institution/local policy)");
+    } else {
+      addRec("OK","Breast cancer screening",
+        "Not routinely indicated below typical guideline start ages; consider if high-risk.",
+        "Guideline-dependent (risk-based)");
+    }
+  }
+
+  // 6) Osteoporosis
+  if(isFemale){
+    const highRiskOsteo = r.smoker || r.ckd || r.dm;
+    if(d.age >= 65){
+      addRec(isUpToDate(s.osteoporosis) ? "OK" : "DUE",
+        "Osteoporosis screening",
+        isUpToDate(s.osteoporosis) ? "Up to date (per entered bucket)."
+                                   : "Due: DXA screening recommended for women ≥65.",
+        "USPSTF: Osteoporosis Screening");
+    } else if(d.age >= 50 && highRiskOsteo){
+      addRec(isUpToDate(s.osteoporosis) ? "OK" : "CONSIDER",
+        "Osteoporosis screening",
+        isUpToDate(s.osteoporosis) ? "Up to date (per entered bucket)."
+                                   : "Consider earlier screening due to elevated risk profile (FRAX-based assessment per policy).",
+        "USPSTF: Osteoporosis Screening (risk-based)");
+    } else {
+      addRec("OK","Osteoporosis screening",
+        "Not routinely indicated based on age/risk proxy entered.",
+        "USPSTF: Osteoporosis Screening");
+    }
+  }
+
+  // 7) AAA
+  if(isMale){
+    if(d.age >= 65 && d.age <= 75 && r.smoker){
+      addRec(isUpToDate(s.aaa) ? "OK" : "DUE",
+        "AAA screening (ultrasound)",
+        isUpToDate(s.aaa) ? "Up to date (per entered bucket)."
+                          : "Due: one-time screening recommended for men 65–75 with smoking history.",
+        "USPSTF: AAA Screening");
+    } else {
+      addRec("OK","AAA screening (ultrasound)",
+        "Not routinely indicated based on age/sex/smoking criteria entered.",
+        "USPSTF: AAA Screening");
+    }
+  }
+
+  // 8) HIV
+  {
+    if(d.age >= 18 && d.age <= 65){
+      addRec(isUpToDate(s.hiv) ? "OK" : "DUE",
+        "HIV screening",
+        isUpToDate(s.hiv) ? "Up to date (per entered bucket)."
+                          : "Due: at least one-time screening (repeat if ongoing risk).",
+        "USPSTF: HIV Screening");
+    } else {
+      addRec("CONSIDER","HIV screening",
+        "Consider if risk factors present or never previously screened.",
+        "USPSTF: HIV Screening (risk-based)");
+    }
+  }
+
+  // 9) HCV
+  {
+    if(d.age >= 18 && d.age <= 79){
+      addRec(isUpToDate(s.hcv) ? "OK" : "DUE",
+        "Hepatitis C screening",
+        isUpToDate(s.hcv) ? "Up to date (per entered bucket)."
+                          : "Due: one-time HCV screening for adults 18–79 (repeat if risk).",
+        "USPSTF: Hepatitis C Screening");
+    } else {
+      addRec("CONSIDER","Hepatitis C screening",
+        "Consider if risk factors present or never screened.",
+        "USPSTF: Hepatitis C Screening (risk-based)");
+    }
+  }
+
+  // 10) Depression
+  {
+    addRec(isUpToDate(s.depression) ? "OK" : "CONSIDER",
+      "Depression screening",
+      isUpToDate(s.depression) ? "Up to date (per entered bucket)."
+                               : "Consider routine screening (e.g., PHQ-2/PHQ-9) where adequate systems for diagnosis and follow-up exist.",
+      "USPSTF: Depression Screening (Adults)");
+  }
+
+  // 11) Lipids (policy dependent)
+  {
+    const higherRisk = r.dm || r.htn || r.ckd || r.smoker || r.dyslip || r.obesity || (bmi !== null && bmi >= 30);
+    if(d.age < 20){
+      addRec("OK","Lipid panel / ASCVD risk assessment","Not routinely indicated below adulthood in this tool.","Scope");
+    } else {
+      addRec(isUpToDate(s.lipids) ? "OK" : (higherRisk ? "DUE" : "CONSIDER"),
+        "Lipid panel / ASCVD risk assessment",
+        isUpToDate(s.lipids) ? "Up to date (per entered bucket)."
+                             : (higherRisk
+                                ? "Due: higher-risk profile—consider lipid panel and ASCVD risk estimation per institutional protocol."
+                                : "Consider lipid assessment based on age and local protocol (intervals vary by guideline)."),
+        "Institution/local policy");
+    }
+  }
+
+  /* =========================
+     12) PREGNANCY FOLLOW-UP (GA-based)
+     Visible only if Sex=Female and Pregnancy=Yes
+     ========================= */
+  {
+    const isPreg = (d.sex === "female" && d.pregnant === "yes");
+
+    // Ensure GA/EDD are computed
+    calcGAandEDD();
+    const ga = d.gaWeeks; // number or null
+
+    const pregAdd = (status, title, detail, source) => {
+      addRec(status, `Pregnancy — ${title}`, detail, source);
+    };
+
+    if(isPreg){
+      // If GA missing, still prompt LMP/GA
+      if(ga === null){
+        pregAdd(
+          "CONSIDER",
+          "Gestational age not calculated",
+          "Enter LMP to auto-calculate GA and EDD so pregnancy due-by-GA reminders can be shown accurately.",
+          "Tool function"
+        );
+      }
+
+      // Booking labs (show as due if early pregnancy window or GA unknown)
+      // ACOG: routine tests during pregnancy include early baseline labs :contentReference[oaicite:5]{index=5}
+      if(ga === null || ga <= 14){
+        if(s.preg_booking_labs === "recent"){
+          pregAdd(
+            "OK",
+            "Booking labs (early pregnancy)",
+            "Up to date (per entered bucket).",
+            "ACOG: Routine Tests During Pregnancy"
+          );
+        } else {
+          pregAdd(
+            "DUE",
+            "Booking labs (early pregnancy)",
+            "Due: early pregnancy baseline labs (e.g., CBC, blood group & Rh/antibody screen, urinalysis + urine culture) per local antenatal protocol.",
+            "ACOG: Routine Tests During Pregnancy"
+          );
+        }
+      }
+
+      // cfDNA/NIPT (≥10 weeks)
+      // ACOG: cfDNA can be done from 10 weeks and beyond :contentReference[oaicite:6]{index=6}
+      if(ga !== null && ga >= 10){
+        if(s.preg_cfdna === "recent"){
+          pregAdd(
+            "OK",
+            "DNA analysis (cfDNA / NIPT)",
+            "Up to date (per entered bucket).",
+            "ACOG: Prenatal Genetic Screening / cfDNA timing"
+          );
+        } else {
+          // Keep as CONSIDER because availability & counseling are policy dependent
+          pregAdd(
+            "CONSIDER",
+            "DNA analysis (cfDNA / NIPT)",
+            "Consider offering cfDNA/NIPT screening (commonly from ≥10 weeks) with appropriate counseling and confirmatory testing pathway for positives.",
+            "ACOG: Prenatal Genetic Screening / cfDNA timing"
+          );
+        }
+      }
+
+      // NT window (≈11–13+6)
+      // (Common clinical window; tool uses GA boundaries)
+      if(ga !== null && ga >= 11 && ga <= 13.9){
+        if(s.preg_nt === "recent"){
+          pregAdd(
+            "OK",
+            "NT ultrasound window (11–13+6)",
+            "Up to date (per entered bucket).",
+            "Window-based practice"
+          );
+        } else {
+          pregAdd(
+            "DUE",
+            "NT ultrasound window (11–13+6)",
+            "Due now based on GA: NT assessment is typically performed in the 11–13+6 week window (if used in your protocol).",
+            "Window-based practice"
+          );
+        }
+      }
+
+      // Dating/EDD confirmation ultrasound before 22 weeks
+      // ACOG: if no ultrasound confirming/revising EDD before 22w => suboptimally dated :contentReference[oaicite:7]{index=7}
+      if(ga !== null && ga <= 22){
+        if(s.preg_edd_confirm_us === "recent"){
+          pregAdd(
+            "OK",
+            "Dating / EDD confirmation ultrasound",
+            "Up to date (per entered bucket).",
+            "ACOG: Methods for Estimating the Due Date"
+          );
+        } else {
+          pregAdd(
+            "CONSIDER",
+            "Dating / EDD confirmation ultrasound",
+            "Consider dating/EDD confirmation ultrasound before 22 weeks (otherwise pregnancy is considered suboptimally dated).",
+            "ACOG: Methods for Estimating the Due Date"
+          );
+        }
+      }
+
+      // Anatomy scan 18–22 weeks
+      // ACOG FAQ: at least one standard ultrasound usually performed at 18–22 weeks :contentReference[oaicite:8]{index=8}
+      if(ga !== null && ga >= 18 && ga <= 22.5){
+        if(s.preg_anatomy_us === "recent"){
+          pregAdd(
+            "OK",
+            "Anatomy ultrasound (18–22 weeks)",
+            "Up to date (per entered bucket).",
+            "ACOG: Ultrasound Exams"
+          );
+        } else {
+          pregAdd(
+            "DUE",
+            "Anatomy ultrasound (18–22 weeks)",
+            "Due now based on GA: standard anatomy ultrasound is usually performed at 18–22 weeks.",
+            "ACOG: Ultrasound Exams"
+          );
+        }
+      }
+
+      // GDM 24–28 weeks
+      // ACOG: glucose screening usually 24–28 weeks :contentReference[oaicite:9]{index=9}
+      if(ga !== null && ga >= 24 && ga <= 28.5){
+        if(s.preg_gdm === "recent"){
+          pregAdd(
+            "OK",
+            "Gestational diabetes screening (24–28 weeks)",
+            "Up to date (per entered bucket).",
+            "ACOG: Gestational Diabetes / Routine Tests During Pregnancy"
+          );
+        } else {
+          pregAdd(
+            "DUE",
+            "Gestational diabetes screening (24–28 weeks)",
+            "Due now based on GA: perform GDM screening between 24–28 weeks per protocol (earlier testing if high risk per local policy).",
+            "ACOG: Gestational Diabetes / Routine Tests During Pregnancy"
+          );
+        }
+      }
+
+      // Tdap 27–36 weeks
+      // CDC/ACOG: give Tdap 27–36 weeks each pregnancy :contentReference[oaicite:10]{index=10}
+      if(ga !== null && ga >= 27 && ga <= 36.9){
+        if(s.preg_tdap === "recent"){
+          pregAdd(
+            "OK",
+            "Tdap (27–36 weeks)",
+            "Up to date (per entered bucket).",
+            "CDC/ACOG: Tdap in Pregnancy"
+          );
+        } else {
+          pregAdd(
+            "DUE",
+            "Tdap (27–36 weeks)",
+            "Due now based on GA: administer Tdap during 27–36 weeks (prefer earlier in the window).",
+            "CDC/ACOG: Tdap in Pregnancy"
+          );
+        }
+      }
+    }
+  }
+
+
+  recs.sort((a,b)=> rank[a.status]-rank[b.status]);
+  state.results = recs;
+}
+
+/* =========================================================
+   PAGE: RESULTS
+   ========================================================= */
+
+function renderResults(){
+  $("leftTitle").textContent = "Results";
+  $("leftSub").textContent = "Prioritized recommendations";
+  setStatus("Calculated", "ok");
+
+  evaluateAll();
+
+  const due = state.results.filter(x=>x.status==="DUE");
+  const consider = state.results.filter(x=>x.status==="CONSIDER");
+  const ok = state.results.filter(x=>x.status==="OK");
+
+  const badgeClass = (st)=> st==="DUE" ? "due" : (st==="CONSIDER" ? "high" : "ok");
+  const badgeText  = (st)=> st==="DUE" ? "DUE" : (st==="CONSIDER" ? "CONSIDER" : "OK");
+
+  let html = `
+    <div class="row">
+      <div class="pill"><span class="dot due"></span> Due: ${due.length}</div>
+      <div class="pill"><span class="dot hi"></span> Consider: ${consider.length}</div>
+      <div class="pill"><span class="dot ok"></span> OK: ${ok.length}</div>
+    </div>
+    <div class="results">
+  `;
+
+  state.results.forEach(item=>{
+    html += `
+      <div class="item">
+        <div class="top">
+          <div><b>${item.title}</b></div>
+          <div class="badge ${badgeClass(item.status)}">${badgeText(item.status)}</div>
+        </div>
+        <div class="msg">${item.detail}</div>
+        <div class="src">Source: ${item.source}</div>
+      </div>
+    `;
+  });
+
+  html += `
+    </div>
+    <div class="btns">
+      <button class="btn primary" onclick="goto('export')">Export (Copy/Paste)</button>
+      <button class="btn" onclick="goto('screening')">Back to Screening</button>
+    </div>
+  `;
+
+  $("leftPane").innerHTML = html;
+}
+
+/* =========================================================
+   EXPORT (Structured HIS text + Copy)
+   ========================================================= */
+
+function buildExportText(){
+  const d = state.demographics;
+  const bmi = state.bmi;
+  const dateStr = new Date().toISOString().slice(0,10);
+
+  const sexText = d.sex ? (d.sex==="male" ? "Male" : "Female") : "—";
+  const pregText = (d.sex==="female") ? (state.demographics.pregnant || "unknown") : "N/A";
+
+  const riskFlags = Object.entries(state.risks)
+    .filter(([k,v])=>v)
+    .map(([k])=>k.toUpperCase())
+    .join(", ") || "None selected";
+
+  const due = state.results.filter(x=>x.status==="DUE");
+  const consider = state.results.filter(x=>x.status==="CONSIDER");
+  const ok = state.results.filter(x=>x.status==="OK");
+
+  const lines = [];
+  lines.push(`Preventive Care & Screening — Reviewed: ${dateStr}`);
+  const pregInfo =
+    (d.sex==="female" && d.pregnant==="yes")
+      ? `; LMP=${d.lmp ?? "—"}; GA=${d.gaWeeks ?? "—"}w; EDD=${d.edd ?? "—"}`
+      : "";
+
+  lines.push(`Inputs: Age=${d.age ?? "—"}; Sex=${sexText}; BMI=${bmi ?? "—"}; Pregnancy=${pregText}${pregInfo}; Risks=${riskFlags}.`);
+  lines.push("");
+  lines.push("SCREENING / PREVENTION ACTIONS");
+
+  if(due.length){
+    lines.push("Due now:");
+    due.forEach(x=> lines.push(`- ${x.title}: ${x.detail} (Source: ${x.source})`));
+  } else {
+    lines.push("Due now: None identified based on entered data.");
+  }
+
+  if(consider.length){
+    lines.push("");
+    lines.push("Consider / verify:");
+    consider.forEach(x=> lines.push(`- ${x.title}: ${x.detail} (Source: ${x.source})`));
+  }
+
+  if(ok.length){
+    lines.push("");
+    lines.push("Up to date / not indicated:");
+    ok.slice(0,8).forEach(x=> lines.push(`- ${x.title}: ${x.detail} (Source: ${x.source})`));
+    if(ok.length > 8) lines.push(`- (+${ok.length-8} more items OK)`);
+  }
+
+  lines.push("");
+  lines.push("Plan: Discussed preventive care and screening; orders placed / advised as above; follow-up for completion and results review.");
+
+  return lines.join("\n");
+}
+
+async function copyTextToClipboard(text){
+  try{
+    await navigator.clipboard.writeText(text);
+    toast("Copied to clipboard.");
+  } catch(e){
+    const ta = $("exportBox");
+    if(ta){
+      ta.focus();
+      ta.select();
+      document.execCommand("copy");
+      toast("Copied (fallback).");
+    } else {
+      toast("Copy failed.");
+    }
+  }
+}
+
+function toast(msg){
+  const div = document.createElement("div");
+  div.style.cssText = `
+    position:fixed;top:16px;left:50%;transform:translateX(-50%);
+    background:rgba(17,26,44,.95);
+    border:1px solid rgba(255,255,255,.18);
+    color:rgba(232,239,255,.95);
+    padding:10px 12px;border-radius:14px;
+    font-weight:900;box-shadow:0 18px 45px rgba(0,0,0,.35);
+    z-index:9999;
+  `;
+  div.textContent = msg;
+  document.body.appendChild(div);
+  setTimeout(()=>div.remove(), 1400);
+}
+
+function renderExport(){
+  $("leftTitle").textContent = "Export";
+  $("leftSub").textContent = "Copy/Paste into HIS";
+  setStatus("Export ready", "ok");
+
+  evaluateAll();
+  const text = buildExportText();
+
+  $("leftPane").innerHTML = `
+    <div class="note">
+      Copy the text below into your HIS documentation.
+      No patient identifiers are generated or stored by this tool.
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="field">
+      <label>Structured text (HIS-ready)</label>
+      <textarea id="exportBox" readonly>${text}</textarea>
+    </div>
+
+    <div class="btns">
+      <button class="btn primary" onclick="copyTextToClipboard(buildExportText())">Copy to clipboard</button>
+      <button class="btn" onclick="goto('results')">Back to Results</button>
+      <button class="btn danger" onclick="resetAll()">Reset</button>
+    </div>
+  `;
+}
+
+/* =========================================================
+   RESET
+   ========================================================= */
+
+function resetAll(){
+  state.demographics.age = null;
+  state.demographics.sex = null;
+  state.demographics.pregnant = "na";
+  state.demographics.height = null;
+  state.demographics.weight = null;
+
+  Object.keys(state.risks).forEach(k=>state.risks[k]=false);
+  Object.keys(state.screening).forEach(k=>state.screening[k]="unknown");
+
+  state.results = [];
+  state.bmi = null;
+
+  toast("Reset done.");
+  goto("welcome");
+}
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+render();
+  </script>
+</body>
+</html>
