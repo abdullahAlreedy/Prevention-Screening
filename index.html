@@ -268,6 +268,7 @@
         <div class="tab" data-page="demographics">Demographics</div>
         <div class="tab" data-page="risks">Risk Factors</div>
         <div class="tab" data-page="screening">Screening</div>
+		<div class="tab" data-page="vaccinations">Vaccinations</div>
         <div class="tab" data-page="results">Results</div>
         <div class="tab" data-page="export">Export</div>
       </div>
@@ -391,8 +392,37 @@ const state = {
 }
 
   },
+  vaccinations: {
+    // Each item is session-only
+    // intervalType: "POLICY" (years) or "ONE_TIME"
+    influenza:     { done:null, lastDate:null, intervalType:"POLICY", intervalYears:1,  nextDue:null, note:"Policy-based annual." },
+    covid19:       { done:null, lastDate:null, intervalType:"POLICY", intervalYears:1,  nextDue:null, note:"Policy-based." },
+    tdap:          { done:null, lastDate:null, intervalType:"POLICY", intervalYears:10, nextDue:null, note:"Policy-based booster interval." },
+    pneumococcal:  { done:null, lastDate:null, intervalType:"ONE_TIME", intervalYears:null, nextDue:null, note:"Policy-based eligibility." },
+    hepB:          { done:null, lastDate:null, intervalType:"ONE_TIME", intervalYears:null, nextDue:null, note:"Series completion (policy-based)." },
+    hpv:           { done:null, lastDate:null, intervalType:"ONE_TIME", intervalYears:null, nextDue:null, note:"Series completion (policy-based)." },
+    zoster:        { done:null, lastDate:null, intervalType:"ONE_TIME", intervalYears:null, nextDue:null, note:"Series completion (policy-based)." }
+  },
+  pregnancy: {
+    // Session-only pregnancy follow-up tracker (GA-based)
+    items: {
+      datingScan:   { done:null, date:null, note:"Dating/NT scan window commonly 8–13 weeks." },
+      nipt:         { done:null, date:null, note:"NIPT / cfDNA typically from 10 weeks (policy-based)." },
+      anomalyScan:  { done:null, date:null, note:"Anomaly scan commonly 18–22 weeks." },
+      gdmScreen:    { done:null, date:null, note:"GDM screen commonly 24–28 weeks." },
+      gbs:          { done:null, date:null, note:"GBS screen commonly 35–37 weeks." }
+    }
+  },
+   ui: {
+    showNonEligible: false,
+    exportMode: "progress", // "progress" | "patient"
+    policy: "USPSTF"        // "USPSTF" | "LOCAL"
+  },
+
+
 
   results: [], // computed
+  flags: [], // session-only data-quality flags
   exportText: "" // computed
 };
 
@@ -401,6 +431,49 @@ const state = {
    UTILITIES
    ========================= */
 function $(id){ return document.getElementById(id); }
+/* =========================================================
+   V2 BLOCK 3B
+   Pregnancy helpers (GA/EDD + due window logic)
+   ========================================================= */
+
+function addDaysISO(isoDate, days){
+  const d = parseISODate(isoDate);
+  if(!d) return null;
+  d.setDate(d.getDate() + Number(days));
+  return d.toISOString().slice(0,10);
+}
+
+function getGAWeeksFromState(){
+  const d = state.demographics;
+  if(d.sex !== "female") return null;
+  if(!d.pregnant) return null;
+  if(!d.lmp) return null;
+
+  const lmp = parseISODate(d.lmp);
+  if(!lmp) return null;
+
+  const diffMs = new Date().getTime() - lmp.getTime();
+  const w = Math.floor(diffMs / (1000*60*60*24*7));
+  if(w < 0) return null;
+  return w;
+}
+
+function getEDDFromLMP(){
+  const d = state.demographics;
+  if(!d.lmp) return null;
+  // 280 days = 40 weeks
+  return addDaysISO(d.lmp, 280);
+}
+
+// Returns: "NOT_YET" | "DUE_NOW" | "OVERDUE" | "DONE" | "NA"
+function gaWindowStatus(gaWeeks, done, startW, endW){
+  if(gaWeeks === null) return "NA";
+  if(done === true) return "DONE";
+  if(gaWeeks < startW) return "NOT_YET";
+  if(gaWeeks >= startW && gaWeeks <= endW) return "DUE_NOW";
+  if(gaWeeks > endW) return "OVERDUE";
+  return "NA";
+}
 
 function setStatus(kind, text){
   const dot = $("statusDot");
@@ -469,6 +542,44 @@ function calcBMI(heightCm, weightKg){
   const bmi = w / (m*m);
   return Math.round(bmi*10)/10;
 }
+/* =========================================================
+   V2 BLOCK 1A
+   Risk-based suggested interval for Lipids (non-binding)
+   ========================================================= */
+function suggestLipidsIntervalYears(){
+  const r = state.risks;
+
+  const highRisk =
+    r.dm ||
+    r.htn ||
+    r.ckd ||
+    r.smoker ||
+    r.obesity;
+
+  if (highRisk) return 1;   // yearly
+  return 5;                 // default low risk
+}
+/* =========================================================
+   V2 BLOCK 6B
+   Policy selector helpers (session-only)
+   ========================================================= */
+
+function policyLabel(){
+  return (state.ui.policy === "LOCAL") ? "LOCAL POLICY" : "USPSTF";
+}
+
+function cyclePolicy(){
+  state.ui.policy = (state.ui.policy === "USPSTF") ? "LOCAL" : "USPSTF";
+}
+
+function applyPolicyHooks(){
+  // Intentionally minimal in Block 6 to keep v1 logic stable.
+  // This is the single place where later V2 blocks can adjust:
+  // - default intervals
+  // - eligibility toggles
+  // - wording / sources
+  // without breaking the app.
+}
 
 /* =========================
    NAVIGATION
@@ -530,6 +641,7 @@ function setHeaders(){
     demographics: ["Demographics", "Sex, DOB, BMI (session-only)"],
     risks: ["Risk Factors", "Click to highlight risk factors"],
     screening: ["Screening", "Enter Done/Date when available to calculate next due"],
+	vaccinations: ["Vaccinations", "Session-only vaccine tracker (policy-based intervals)"],
     results: ["Results", "Due, recommended, and considerations"],
     export: ["Export", "Copy into your progress note"]
   };
@@ -549,6 +661,7 @@ function render(){
   else if(state.page === "demographics") renderDemographics();
   else if(state.page === "risks") renderRisks();
   else if(state.page === "screening") renderScreening();
+  else if(state.page === "vaccinations") renderVaccinations();
   else if(state.page === "results") renderResults();
   else if(state.page === "export") renderExport();
   else renderWelcome();
@@ -628,6 +741,7 @@ function renderWelcome(){
     </div>
 
     <div class="btns">
+	  <div class="btn" onclick="cyclePolicy(); applyPolicyHooks(); renderWelcome();">Policy: ${policyLabel()}</div>
       <div class="btn primary" onclick="go('demographics')">Start</div>
       <div class="btn" onclick="go('risks')">Risk Factors</div>
       <div class="btn" onclick="go('screening')">Screening</div>
@@ -1257,84 +1371,171 @@ function renderScreening(){
       This is session-only and does not store patient data.
     </div>
   `;
-
-  // HTN wizard (Adults)
-  if(d.age !== null && d.age >= 18){
-    html += renderGenericWizard(
-      "htn",
-      "htn",
-      "Blood pressure screening (HTN)",
-      "Adults ≥18 (risk-based frequency).",
-      "RISK_BASED"
-    );
+   // V2 policy banner (session-only)
+  html += `
+    <div class="note" style="margin-top:12px">
+      <b>Policy:</b> ${policyLabel()} &nbsp; 
+      <span class="tiny">(session-only selector)</span><br>
+      <div class="btns" style="margin-top:10px">
+        <div class="btn" onclick="cyclePolicy(); applyPolicyHooks(); renderScreening();">Switch Policy</div>
+      </div>
+    </div>
+  `;
+ 
+  // V2 Pregnancy pathway (only when applicable)
+  if (d.sex === "female" && d.pregnant === true) {
+    html += renderPregnancyPanel();
   }
 
-  // DM screening wizard (USPSTF 35–70 with overweight/obesity; only if NOT known DM)
-  const eligibleDM = (d.age !== null && d.age >= 35 && d.age <= 70 && (state.risks.obesity || (d.bmi !== null && d.bmi >= 25)));
-  if(eligibleDM && !state.risks.dm){
-    html += renderGenericWizard(
-      "dm",
-      "dm",
-      "Diabetes screening (if not known DM)",
-      "35–70 with overweight/obesity (USPSTF framework).",
-      "ANNUAL"
-    );
-  }
-  // Depression screening (annual)
-  if(d.age !== null && d.age >= 12){
-    html += renderGenericWizard(
-      "depression",
-      "depression",
-      "Depression screening (PHQ-2/PHQ-9)",
-      "Annual where systems exist (policy/practice-dependent).",
-      "ANNUAL"
-    );
+  // V2 filter UI (default hides non-eligible)
+  html += `
+    <div class="row" style="margin-top:10px">
+      <div class="field">
+        <label>Screening filter</label>
+        <select onchange="state.ui.showNonEligible = (this.value==='show'); renderScreening();">
+          <option value="hide" ${state.ui.showNonEligible ? "" : "selected"}>Hide non-eligible items</option>
+          <option value="show" ${state.ui.showNonEligible ? "selected" : ""}>Show non-eligible items</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Sorting</label>
+        <input type="text" value="Due / Overdue first" readonly>
+      </div>
+    </div>
+  `;
+
+  const sections = [];
+
+  // -----------------------
+  // Pregnancy panel (not part of sorting list; always near top when applicable)
+  // -----------------------
+  if (d.sex === "female" && d.pregnant === true) {
+    html += renderPregnancyPanel();
   }
 
-  // AAA (one-time) - classic eligibility: men 65–75 who ever smoked (simplified)
-  const eligibleAAA = (d.sex === "male" && d.age !== null && d.age >= 65 && d.age <= 75 && state.risks.smoker);
-  if(eligibleAAA){
-    html += renderGenericWizard(
-      "aaa",
-      "aaa",
-      "AAA screening (abdominal ultrasound)",
-      "One-time screening in eligible patients (repeat if special risk).",
-      "ONE_TIME"
-    );
+  // -----------------------
+  // Eligibility helpers
+  // -----------------------
+  const isFemale = (d.sex === "female");
+  const isMale = (d.sex === "male");
+  const age = d.age;
+
+  const eligibleHTN = (age !== null && age >= 18);
+  const eligibleDM = (age !== null && age >= 35 && age <= 70 && (state.risks.obesity || (d.bmi !== null && d.bmi >= 25)) && !state.risks.dm);
+  const eligibleCRC = (age !== null && age >= 45);
+  const eligibleHIV = (age !== null && age >= 15);
+  const eligibleHCV = (age !== null && age >= 18);
+  const eligibleLipids = (age !== null && age >= 20);
+
+  const eligibleCervical = (isFemale && age !== null && age >= 21 && age <= 65);
+  const eligibleBreast = (isFemale && age !== null && age >= 40);
+  const eligibleOsteo = (isFemale && age !== null && age >= 65);
+
+  const eligibleDepression = (age !== null && age >= 12);
+  const eligibleAAA = (isMale && age !== null && age >= 65 && age <= 75 && state.risks.smoker);
+
+  // -----------------------
+  // Build sections (only eligible unless showNonEligible enabled)
+  // -----------------------
+
+  // HTN
+  if (eligibleHTN) {
+    const block = renderGenericWizard("htn","htn","Blood pressure screening (HTN)","Adults ≥18 (risk-based frequency).","RISK_BASED");
+    pushScreeningSection(sections, "htn", block);
+  } else if (state.ui.showNonEligible) {
+    pushScreeningSection(sections, "htn", renderNotEligibleBlock("Blood pressure screening (HTN)", "Not eligible based on demographics."));
   }
 
-  // CRC wizard (45–75 routine; tool allows entry outside but will be interpreted later in Results)
-  if(d.age !== null && d.age >= 45){
-    // connect FHx flag from risks to CRC wizard default (non-destructive)
+  // DM screening
+  if (eligibleDM) {
+    const block = renderGenericWizard("dm","dm","Diabetes screening (if not known DM)","35–70 with overweight/obesity (USPSTF framework).","ANNUAL");
+    pushScreeningSection(sections, "dm", block);
+  } else if (state.ui.showNonEligible) {
+    pushScreeningSection(sections, "dm", renderNotEligibleBlock("Diabetes screening", "Not eligible (age/risk/known diabetes)."));
+  }
+
+  // Depression
+  if (eligibleDepression) {
+    const block = renderGenericWizard("depression","depression","Depression screening (PHQ-2/PHQ-9)","Annual where systems exist (policy/practice-dependent).","ANNUAL");
+    pushScreeningSection(sections, "depression", block);
+  } else if (state.ui.showNonEligible) {
+    pushScreeningSection(sections, "depression", renderNotEligibleBlock("Depression screening", "Not eligible based on age."));
+  }
+
+  // AAA
+  if (eligibleAAA) {
+    const block = renderGenericWizard("aaa","aaa","AAA screening (abdominal ultrasound)","One-time screening in eligible patients (repeat if special risk).","ONE_TIME");
+    pushScreeningSection(sections, "aaa", block);
+  } else if (state.ui.showNonEligible) {
+    pushScreeningSection(sections, "aaa", renderNotEligibleBlock("AAA screening (abdominal ultrasound)", "Not eligible (typically male 65–75 ever smoker)."));
+  }
+
+  // CRC
+  if (eligibleCRC) {
     if(state.risks.fhxCrc && state.screeningDetails.crc.fhxFDR === false){
       state.screeningDetails.crc.fhxFDR = true;
     }
-    html += renderCRCWizard();
-  }
-    // Cervical screening (female 21–65)
-  if(d.sex === "female" && d.age !== null && d.age >= 21 && d.age <= 65){
-    html += renderCervicalWizard();
-  }
-
-  // HIV (one-time)
-  if(d.age !== null && d.age >= 15){
-    html += renderGenericWizard("hiv","hiv","HIV screening","One-time screening (repeat if ongoing risk).","ONE_TIME");
-    html += renderGenericWizard("hcv","hcv","Hepatitis C screening","One-time screening for adults (repeat if risk).","ONE_TIME");
+    const block = renderCRCWizard();
+    pushScreeningSection(sections, "crc", block);
+  } else if (state.ui.showNonEligible) {
+    pushScreeningSection(sections, "crc", renderNotEligibleBlock("Colorectal cancer screening (CRC)", "Not eligible based on age."));
   }
 
-  // Lipids (policy-based interval)
-  if(d.age !== null && d.age >= 20){
-    html += renderLipidsWizard();
-  }
-  // Breast screening (female; policy-driven)
-  if(d.sex === "female" && d.age !== null && d.age >= 40){
-    html += renderBreastWizard();
+  // HIV / HCV
+  if (eligibleHIV) {
+    const block = renderGenericWizard("hiv","hiv","HIV screening","One-time screening (repeat if ongoing risk).","ONE_TIME");
+    pushScreeningSection(sections, "hiv", block);
+  } else if (state.ui.showNonEligible) {
+    pushScreeningSection(sections, "hiv", renderNotEligibleBlock("HIV screening", "Not eligible based on age."));
   }
 
-  // Osteoporosis (DXA) (female ≥65; optional earlier if high risk - add later)
-  if(d.sex === "female" && d.age !== null && d.age >= 65){
-    html += renderOsteoporosisWizard();
+  if (eligibleHCV) {
+    const block = renderGenericWizard("hcv","hcv","Hepatitis C screening","One-time screening for adults (repeat if risk).","ONE_TIME");
+    pushScreeningSection(sections, "hcv", block);
+  } else if (state.ui.showNonEligible) {
+    pushScreeningSection(sections, "hcv", renderNotEligibleBlock("Hepatitis C screening", "Not eligible based on age."));
   }
+
+  // Lipids
+  if (eligibleLipids) {
+    const block = renderLipidsWizard();
+    pushScreeningSection(sections, "lipids", block);
+  } else if (state.ui.showNonEligible) {
+    pushScreeningSection(sections, "lipids", renderNotEligibleBlock("Lipid panel / ASCVD risk assessment", "Not eligible based on age."));
+  }
+
+  // Cervical
+  if (eligibleCervical) {
+    const block = renderCervicalWizard();
+    pushScreeningSection(sections, "cervical", block);
+  } else if (state.ui.showNonEligible) {
+    pushScreeningSection(sections, "cervical", renderNotEligibleBlock("Cervical cancer screening", "Not eligible (female 21–65)."));
+  }
+
+  // Breast
+  if (eligibleBreast) {
+    const block = renderBreastWizard();
+    pushScreeningSection(sections, "breast", block);
+  } else if (state.ui.showNonEligible) {
+    pushScreeningSection(sections, "breast", renderNotEligibleBlock("Breast cancer screening (mammography)", "Not eligible based on demographics/age."));
+  }
+
+  // Osteoporosis
+  if (eligibleOsteo) {
+    const block = renderOsteoporosisWizard();
+    pushScreeningSection(sections, "osteoporosis", block);
+  } else if (state.ui.showNonEligible) {
+    pushScreeningSection(sections, "osteoporosis", renderNotEligibleBlock("Osteoporosis screening (DXA)", "Not eligible (commonly female ≥65)."));
+  }
+
+  // -----------------------
+  // Sort by bucket priority (Due first) then original order
+  // -----------------------
+  sections.sort((a,b)=> (a.pr - b.pr) || (a.order - b.order));
+
+  // Append sorted blocks
+  html += sections.map(x=>x.html).join("");
+
 
   html += `
     <div class="btns">
@@ -1366,6 +1567,10 @@ function lipidsIntervalLabel(v){
 function renderLipidsWizard(){
   const g = state.screeningDetails.generic.lipids;
   g.intervalType = "POLICY";
+// V2 suggestion: apply only if interval not yet selected
+if (g.intervalYears === null && g.done === true) {
+  g.intervalYears = suggestLipidsIntervalYears();
+}
 
   // calculate + sync
   calcNextDueGeneric("lipids");
@@ -1444,6 +1649,8 @@ function renderLipidsWizard(){
               <div><b>Last date:</b> ${g.lastDate ?? "—"}</div>
               <div><b>Interval:</b> ${intervalText}</div>
               <div><b>Next due:</b> ${nextText}</div>
+			  <div class="tiny" style="margin-top:6px">Suggested interval based on risk factors (editable).</div>
+
               <div class="tiny" style="margin-top:6px">
                 Interval varies by local protocol/risk. This is a policy selector.
               </div>
@@ -1918,6 +2125,45 @@ function evaluateAll(){
 
 function renderResults(){
   evaluateAll();
+  // V2 flags + counts
+  computeFlagsAndCounts();
+  const c = countDueConsiderOk();
+  const m = countModuleDue();
+
+  const flagsHtml = state.flags.length
+    ? state.flags.map(f=>`
+        <div class="item">
+          <div class="top">
+            <div><b>${f.title}</b></div>
+            <span class="badge high">FLAG</span>
+          </div>
+          <div class="msg">${f.detail}</div>
+        </div>
+      `).join("")
+    : `<div class="note">No flags detected.</div>`;
+
+  const dashboardHtml = `
+    <div class="note">
+      <b>Dashboard (session-only)</b><br>
+      DUE: <b>${c.due}</b> &nbsp; | &nbsp; CONSIDER: <b>${c.consider}</b> &nbsp; | &nbsp; OK: <b>${c.ok}</b><br>
+      Screening due: <b>${m.screeningDue}</b> &nbsp; | &nbsp; Vaccinations due: <b>${m.vaxDue}</b> &nbsp; | &nbsp; Pregnancy due: <b>${m.pregDue}</b>
+    </div>
+
+    <div class="note" style="margin-top:10px">
+      <b>Data quality flags</b><br>
+      Fix missing dates/methods to improve accuracy.
+    </div>
+
+    <div class="results" style="margin-top:12px">
+      ${flagsHtml}
+    </div>
+
+    <div class="note" style="margin-top:12px">
+      <b>Clinical results</b>
+    </div>
+  `;
+  // V2 prepend dashboard + flags
+  // (Clinical result blocks will be appended after)
 
   const blocks = state.results.map(x=>{
     const cls = x.level === "OK" ? "ok" : x.level === "DUE" ? "due" : "high";
@@ -1939,9 +2185,8 @@ function renderResults(){
   }).join("");
 
   $("leftPane").innerHTML = `
-    <div class="note">
-      Results are generated from your session inputs. “Due” items are prioritized.
-    </div>
+      ${dashboardHtml}
+
 
     <div class="results" style="margin-top:12px">
       ${blocks || `<div class="note">No results yet. Go to Screening and enter data.</div>`}
@@ -1983,119 +2228,195 @@ function buildExportText(){
   const d = state.demographics;
   const r = state.risks;
 
-  const lines = [];
-  lines.push("PREVENTION & SCREENING SUMMARY (Session-only)");
-  lines.push(`Date: ${todayISO()}`);
-  lines.push("");
-
-  // Demographics header
-  lines.push("DEMOGRAPHICS");
-  lines.push(`- Sex: ${d.sex}`);
-  lines.push(`- Age: ${d.age ?? "—"}`);
-  lines.push(`- BMI: ${d.bmi ?? "—"}`);
-  if(d.sex === "female"){
-    lines.push(`- Pregnant: ${d.pregnant ? "Yes" : "No"}`);
-    if(d.pregnant){
-      lines.push(`- LMP: ${d.lmp || "—"}`);
-    }
-  }
-  lines.push("");
-
-  // Risk factors summary
-  lines.push("RISK FACTORS (selected)");
-  const rf = [];
-  if(r.smoker) rf.push("Smoker");
-  if(r.obesity) rf.push("Obesity");
-  if(r.htn) rf.push("Known HTN");
-  if(r.dm) rf.push("Known DM");
-  if(r.dyslipidemia) rf.push("Dyslipidemia");
-  if(r.ckd) rf.push("CKD");
-  if(r.fhxPrematureCvd) rf.push("FHx premature CVD");
-  if(r.fhxCrc) rf.push("FHx CRC");
-  lines.push(`- ${rf.length ? rf.join(", ") : "None recorded"}`);
-  lines.push("");
-
-  // Results grouped
-  const due = state.results.filter(x=>x.level==="DUE");
-  const consider = state.results.filter(x=>x.level==="CONSIDER");
-  const ok = state.results.filter(x=>x.level==="OK");
-
-  function listGroup(title, arr){
-    lines.push(title);
-    if(!arr.length){
-      lines.push("- None");
-      lines.push("");
-      return;
-    }
-    arr.forEach(x=>{
-      lines.push(`- ${x.title}: ${x.message}`);
-    });
+  // -----------------------------
+  // Helper: build clinician note
+  // -----------------------------
+  function buildProgressNote(){
+    const lines = [];
+    lines.push("PREVENTION & SCREENING SUMMARY (Session-only)");
+    lines.push(`Policy: ${policyLabel()}`);
     lines.push("");
-  }
 
-  listGroup("DUE ITEMS", due);
-  listGroup("CONSIDER ITEMS", consider);
-  listGroup("UP TO DATE", ok);
-
-  // Key screening dates (from wizards)
-  lines.push("KEY SCREENING DATES (if entered)");
-  const g = state.screeningDetails.generic;
-
-  function addKey(label, obj){
-    if(!obj || obj.done !== true) return;
-    // ensure latest calc
-    calcNextDueGeneric(Object.keys(g).find(k => g[k] === obj) || "");
-    const next =
-      (obj.intervalType === "ONE_TIME") ? "N/A (one-time; repeat if risk)" :
-      (obj.nextDue || "—");
-    const interval =
-      (obj.intervalType === "POLICY" && obj.intervalYears) ? `${obj.intervalYears}y` :
-      (obj.intervalType === "ANNUAL") ? "1y" :
-      (obj.intervalType === "RISK_BASED") ? "risk-based" :
-      (obj.intervalType === "ONE_TIME") ? "one-time" :
-      "—";
-    lines.push(`- ${label}: Last=${obj.lastDate ?? "—"}; Interval=${interval}; Next=${next}.`);
-  }
-
-  addKey("Blood pressure screening", g.htn);
-  addKey("Diabetes screening", g.dm);
-  addKey("Lipid panel / ASCVD risk", g.lipids);
-  addKey("HIV screening", g.hiv);
-  addKey("Hepatitis C screening", g.hcv);
-  addKey("Cervical cancer screening", g.cervical);
-  addKey("Breast cancer screening (mammography)", g.breast);
-  addKey("Osteoporosis screening (DXA)", g.osteoporosis);
-  addKey("Depression screening", g.depression);
-  addKey("AAA screening (abdominal ultrasound)", g.aaa);
-
-  // CRC detail block
-  const crc = state.screeningDetails.crc;
-  lines.push("");
-  lines.push("COLORECTAL CANCER (CRC) — DETAILS");
-  const crcStatus = crc.done===true ? "Done" : crc.done===false ? "Not done" : "Unknown";
-  lines.push(`- Status: ${crcStatus}`);
-  const fhxText = crc.fhxFDR
-    ? `Yes (FDR; Dx age: ${crc.fhxAgeAtDx}; #FDR: ${crc.fhxNumFDR==="two_or_more"?"≥2":"1"})`
-    : "No";
-  lines.push(`- Family history (FDR CRC/advanced adenoma): ${fhxText}`);
-  if(crc.done===true){
-    lines.push(`- Method: ${crc.method ? crcMethodLabel(crc.method) : "—"}`);
-    lines.push(`- Last performed: ${crc.lastDate ?? "—"}`);
-    if(crc.result && crc.result !== "unknown"){
-      lines.push(`- Reported result: ${crc.result.toUpperCase()}`);
+    lines.push("DEMOGRAPHICS");
+    lines.push(`- Sex: ${d.sex}`);
+    lines.push(`- Age: ${d.age ?? "—"}`);
+    lines.push(`- BMI: ${d.bmi ?? "—"}`);
+    if(d.sex === "female"){
+      lines.push(`- Pregnant: ${d.pregnant ? "Yes" : "No"}`);
+      if(d.pregnant){
+        lines.push(`- LMP: ${d.lmp || "—"}`);
+      }
     }
-    if(crc.result === "abnormal"){
-      lines.push("- Next due: Not applicable (abnormal result → follow-up based on findings).");
-    } else {
-      lines.push(`- Next due (calculated): ${crc.nextDue ?? "—"}`);
+    lines.push("");
+
+    lines.push("RISK FACTORS (selected)");
+    const rf = [];
+    if(r.smoker) rf.push("Smoker");
+    if(r.obesity) rf.push("Obesity");
+    if(r.htn) rf.push("Known HTN");
+    if(r.dm) rf.push("Known DM");
+    if(r.dyslipidemia) rf.push("Dyslipidemia");
+    if(r.ckd) rf.push("CKD");
+    if(r.fhxPrematureCvd) rf.push("FHx premature CVD");
+    if(r.fhxCrc) rf.push("FHx CRC");
+    lines.push(`- ${rf.length ? rf.join(", ") : "None recorded"}`);
+    lines.push("");
+
+    const due = state.results.filter(x=>x.level==="DUE");
+    const consider = state.results.filter(x=>x.level==="CONSIDER");
+    const ok = state.results.filter(x=>x.level==="OK");
+
+    function listGroup(title, arr){
+      lines.push(title);
+      if(!arr.length){
+        lines.push("- None");
+        lines.push("");
+        return;
+      }
+      arr.forEach(x=>{
+        lines.push(`- ${x.title}: ${x.message}`);
+      });
+      lines.push("");
     }
+
+    listGroup("DUE ITEMS", due);
+    listGroup("CONSIDER ITEMS", consider);
+    listGroup("UP TO DATE", ok);
+
+    // Key screening dates (from wizards)
+    lines.push("KEY DATES (if entered)");
+    const g = state.screeningDetails.generic;
+
+    function addKey(label, obj){
+      if(!obj || obj.done !== true) return;
+
+      // For generic types, nextDue may already be computed by wizards
+      const next =
+        (obj.intervalType === "ONE_TIME") ? "N/A (one-time; repeat if risk)" :
+        (obj.nextDue || "—");
+
+      const interval =
+        (obj.intervalType === "POLICY" && obj.intervalYears) ? `${obj.intervalYears}y` :
+        (obj.intervalType === "ANNUAL") ? "1y" :
+        (obj.intervalType === "RISK_BASED") ? "risk-based" :
+        (obj.intervalType === "BY_METHOD") ? "by method" :
+        (obj.intervalType === "ONE_TIME") ? "one-time" :
+        "—";
+
+      lines.push(`- ${label}: Last=${obj.lastDate ?? "—"}; Interval=${interval}; Next=${next}.`);
+    }
+
+    addKey("Blood pressure screening", g.htn);
+    addKey("Diabetes screening", g.dm);
+    addKey("Lipid panel / ASCVD risk", g.lipids);
+    addKey("HIV screening", g.hiv);
+    addKey("Hepatitis C screening", g.hcv);
+    addKey("Cervical cancer screening", g.cervical);
+    addKey("Breast cancer screening (mammography)", g.breast);
+    addKey("Osteoporosis screening (DXA)", g.osteoporosis);
+    addKey("Depression screening", g.depression);
+    addKey("AAA screening (abdominal ultrasound)", g.aaa);
+
+    // CRC detail block
+    const crc = state.screeningDetails.crc;
+    lines.push("");
+    lines.push("COLORECTAL CANCER (CRC) — DETAILS");
+    const crcStatus = crc.done===true ? "Done" : crc.done===false ? "Not done" : "Unknown";
+    lines.push(`- Status: ${crcStatus}`);
+    const fhxText = crc.fhxFDR
+      ? `Yes (FDR; Dx age: ${crc.fhxAgeAtDx}; #FDR: ${crc.fhxNumFDR==="two_or_more"?"≥2":"1"})`
+      : "No";
+    lines.push(`- Family history (FDR CRC/advanced adenoma): ${fhxText}`);
+    if(crc.done===true){
+      lines.push(`- Method: ${crc.method ? crcMethodLabel(crc.method) : "—"}`);
+      lines.push(`- Last performed: ${crc.lastDate ?? "—"}`);
+      if(crc.result && crc.result !== "unknown"){
+        lines.push(`- Reported result: ${crc.result.toUpperCase()}`);
+      }
+      if(crc.result === "abnormal"){
+        lines.push("- Next due: Not applicable (abnormal result → follow-up based on findings).");
+      } else {
+        lines.push(`- Next due (calculated): ${crc.nextDue ?? "—"}`);
+      }
+    }
+
+    // Pregnancy export (if applicable and available)
+    if(d.sex === "female" && d.pregnant === true){
+      const ga = (typeof getGAWeeksFromState === "function") ? getGAWeeksFromState() : null;
+      const edd = (typeof getEDDFromLMP === "function") ? getEDDFromLMP() : null;
+      lines.push("");
+      lines.push("PREGNANCY PATHWAY (GA-based, session-only)");
+      lines.push(`- GA (weeks): ${ga ?? "—"}`);
+      lines.push(`- EDD (from LMP): ${edd ?? "—"}`);
+
+      if(state.pregnancy && state.pregnancy.items){
+        const it = state.pregnancy.items;
+        Object.keys(it).forEach(k=>{
+          const item = it[k];
+          const status = item.done===true ? "Done" : item.done===false ? "Not done" : "Unknown";
+          lines.push(`- ${k}: ${status}; Date=${item.date ?? "—"}`);
+        });
+      }
+      lines.push("");
+    }
+
+    // Vaccinations export (if module exists)
+    if(state.vaccinations){
+      lines.push("");
+      lines.push("VACCINATIONS (session-only)");
+      Object.keys(state.vaccinations).forEach(k=>{
+        const v = state.vaccinations[k];
+        const status = v.done===true ? "Done" : v.done===false ? "Not done" : "Unknown";
+        const next =
+          (v.done===true && v.intervalType==="ONE_TIME") ? "N/A" :
+          (v.nextDue || "—");
+        lines.push(`- ${k}: ${status}; Last=${v.lastDate ?? "—"}; Next=${next}`);
+      });
+      lines.push("");
+    }
+
+    lines.push("programed by Dr. Abdullah Hosni Alreedy");
+    return lines.join("\n");
   }
 
-  lines.push("");
-  lines.push("programed by Dr. Abdullah Hosni Alreedy");
+  // -----------------------------
+  // Helper: build patient summary
+  // -----------------------------
+  function buildPatientSummary(){
+    const lines = [];
+    lines.push("PREVENTION SUMMARY (Session-only)");
+    lines.push(`Policy: ${policyLabel()}`);
+    lines.push("");
 
-  state.exportText = lines.join("\n");
+    lines.push(`Age: ${d.age ?? "—"} | Sex: ${d.sex} | BMI: ${d.bmi ?? "—"}`);
+    if(d.sex === "female" && d.pregnant){
+      lines.push(`Pregnancy: Yes | LMP: ${d.lmp || "—"}`);
+    }
+    lines.push("");
+
+    const due = state.results.filter(x=>x.level==="DUE");
+    const consider = state.results.filter(x=>x.level==="CONSIDER");
+
+    lines.push("WHAT YOU NEED NOW");
+    if(!due.length) lines.push("- No urgent due items found based on entered data.");
+    else due.forEach(x=> lines.push(`- ${x.title}`));
+    lines.push("");
+
+    lines.push("THINGS TO DISCUSS");
+    if(!consider.length) lines.push("- None listed.");
+    else consider.forEach(x=> lines.push(`- ${x.title}`));
+    lines.push("");
+
+    lines.push("Session-only. No data is stored.");
+    return lines.join("\n");
+  }
+
+  // Select output
+  state.exportText = (state.ui.exportMode === "patient")
+    ? buildPatientSummary()
+    : buildProgressNote();
 }
+
 
 function renderExport(){
   buildExportText();
@@ -2108,37 +2429,465 @@ function renderExport(){
     <div class="btns">
       <div class="btn" onclick="go('results')">Back to Results</div>
       <div class="btn primary" onclick="copyToClipboard(state.exportText)">Copy</div>
+
+      <div class="btn" onclick="
+        state.ui.exportMode = (state.ui.exportMode==='progress') ? 'patient' : 'progress';
+        renderExport();
+      ">Mode: ${state.ui.exportMode === "patient" ? "Patient Summary" : "Progress Note"}</div>
+
       <div class="btn danger" onclick="
         // Reset session (no storage)
         state.demographics = { sex:'male', dobGregorian:'', age:null, heightCm:'', weightKg:'', bmi:null, pregnant:false, lmp:'' };
         state.risks = { smoker:false, obesity:false, htn:false, dm:false, dyslipidemia:false, ckd:false, fhxPrematureCvd:false, fhxCrc:false };
         state.screening = { htn:'unknown', dm:'unknown', lipids:'unknown', hiv:'unknown', hcv:'unknown', crc:'unknown', cervical:'unknown', breast:'unknown', osteoporosis:'unknown', aaa:'unknown', depression:'unknown' };
+
         state.screeningDetails.crc = { done:null, lastDate:null, method:'', result:'unknown', fhxFDR:false, fhxAgeAtDx:'unknown', fhxNumFDR:'one', startAge:null, intervalYears:null, nextDue:null };
-state.screeningDetails.generic = JSON.parse(JSON.stringify({
-  htn:{ done:null,lastDate:null,intervalType:"RISK_BASED",intervalYears:null,nextDue:null,note:"" },
-  dm:{ done:null,lastDate:null,intervalType:"ANNUAL",intervalYears:1,nextDue:null,note:"" },
-  lipids:{ done:null,lastDate:null,intervalType:"POLICY",intervalYears:null,nextDue:null,note:"" },
-  hiv:{ done:null,lastDate:null,intervalType:"ONE_TIME",intervalYears:null,nextDue:null,note:"" },
-  hcv:{ done:null,lastDate:null,intervalType:"ONE_TIME",intervalYears:null,nextDue:null,note:"" },
-  cervical:{ done:null,lastDate:null,intervalType:"BY_METHOD",intervalYears:null,nextDue:null,note:"",method:"" },
-  breast:{ done:null,lastDate:null,intervalType:"POLICY",intervalYears:null,nextDue:null,note:"",method:"MAMMO" },
-  osteoporosis:{ done:null,lastDate:null,intervalType:"POLICY",intervalYears:null,nextDue:null,note:"",method:"DXA" },
-  aaa:{ done:null,lastDate:null,intervalType:"ONE_TIME",intervalYears:null,nextDue:null,note:"",method:"US" },
-  depression:{ done:null,lastDate:null,intervalType:"ANNUAL",intervalYears:1,nextDue:null,note:"",method:"PHQ" }
-}));
 
+        state.screeningDetails.generic = JSON.parse(JSON.stringify({
+          htn:{ done:null,lastDate:null,intervalType:'RISK_BASED',intervalYears:null,nextDue:null,note:'' },
+          dm:{ done:null,lastDate:null,intervalType:'ANNUAL',intervalYears:1,nextDue:null,note:'' },
+          lipids:{ done:null,lastDate:null,intervalType:'POLICY',intervalYears:null,nextDue:null,note:'' },
+          hiv:{ done:null,lastDate:null,intervalType:'ONE_TIME',intervalYears:null,nextDue:null,note:'' },
+          hcv:{ done:null,lastDate:null,intervalType:'ONE_TIME',intervalYears:null,nextDue:null,note:'' },
 
-        state.results=[]; state.exportText='';
+          cervical:{ done:null,lastDate:null,intervalType:'BY_METHOD',intervalYears:null,nextDue:null,note:'',method:'' },
+          breast:{ done:null,lastDate:null,intervalType:'POLICY',intervalYears:null,nextDue:null,note:'',method:'MAMMO' },
+          osteoporosis:{ done:null,lastDate:null,intervalType:'POLICY',intervalYears:null,nextDue:null,note:'',method:'DXA' },
+          aaa:{ done:null,lastDate:null,intervalType:'ONE_TIME',intervalYears:null,nextDue:null,note:'',method:'US' },
+          depression:{ done:null,lastDate:null,intervalType:'ANNUAL',intervalYears:1,nextDue:null,note:'',method:'PHQ' }
+        }));
+
+        // Vaccinations (if module exists)
+        if(state.vaccinations){
+          Object.keys(state.vaccinations).forEach(k=>{
+            state.vaccinations[k].done = null;
+            state.vaccinations[k].lastDate = null;
+            state.vaccinations[k].nextDue = null;
+          });
+        }
+
+        // Pregnancy (if module exists)
+        if(state.pregnancy && state.pregnancy.items){
+          Object.keys(state.pregnancy.items).forEach(k=>{
+            state.pregnancy.items[k].done = null;
+            state.pregnancy.items[k].date = null;
+          });
+        }
+
+        state.results = [];
+        state.exportText = '';
         go('welcome');
       ">Reset Session</div>
     </div>
 
     <div style="margin-top:12px">
-      <textarea readonly>${state.exportText.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")}</textarea>
+      <textarea readonly>${state.exportText
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+      }</textarea>
     </div>
   `;
 
   setStatus("ok","Export ready");
+}
+
+/* =========================================================
+   V2 BLOCK 2E
+   VACCINATIONS: calc + render (policy-based, session-only)
+   ========================================================= */
+
+function calcVaxNextDue(key){
+  const v = state.vaccinations[key];
+  if(!v) return;
+
+  v.nextDue = null;
+
+  if(v.done !== true) return;
+  if(!v.lastDate) return;
+
+  if(v.intervalType === "ONE_TIME"){
+    v.nextDue = null;
+    return;
+  }
+
+  const years = (v.intervalYears !== null && v.intervalYears !== undefined) ? Number(v.intervalYears) : null;
+  if(!years) return;
+
+  v.nextDue = addYearsISO(v.lastDate, years);
+}
+
+function vaxRow(key, label, intervalOptions){
+  const v = state.vaccinations[key];
+  calcVaxNextDue(key);
+
+  const status =
+    v.done === true ? "Done" :
+    v.done === false ? "Not done" :
+    "Unknown";
+
+  const nextText =
+    (v.done === true && v.intervalType === "ONE_TIME") ? "N/A (one-time/series)" :
+    (v.nextDue || "—");
+
+  const intervalHtml = (v.intervalType === "POLICY") ? `
+    <div class="field">
+      <label>Policy interval</label>
+      <select onchange="
+        const n=this.value?Number(this.value):null;
+        state.vaccinations['${key}'].intervalYears=n;
+        renderVaccinations();
+      ">
+        <option value="" ${v.intervalYears===null?"selected":""}>— select —</option>
+        ${intervalOptions.map(y=>`<option value="${y}" ${v.intervalYears===y?"selected":""}>Every ${y} year(s)</option>`).join("")}
+      </select>
+    </div>
+  ` : `
+    <div class="field">
+      <label>Policy interval</label>
+      <input type="text" value="One-time / series" readonly>
+    </div>
+  `;
+
+  return `
+    <div class="bucket">
+      <div>
+        <b>${label}</b><br>
+        <small>${v.note || "Policy-based."}</small>
+      </div>
+
+      <select onchange="
+        const val=this.value;
+        if(val==='done'){ state.vaccinations['${key}'].done=true; }
+        else if(val==='notdone'){ state.vaccinations['${key}'].done=false; }
+        else { state.vaccinations['${key}'].done=null; }
+
+        if(state.vaccinations['${key}'].done!==true){
+          state.vaccinations['${key}'].lastDate=null;
+          state.vaccinations['${key}'].nextDue=null;
+        }
+        renderVaccinations();
+      ">
+        <option value="unknown" ${v.done===null?"selected":""}>Unknown</option>
+        <option value="done" ${v.done===true?"selected":""}>Done</option>
+        <option value="notdone" ${v.done===false?"selected":""}>Not done</option>
+      </select>
+    </div>
+
+    ${
+      v.done === true ? `
+        <div class="row" style="margin-top:10px">
+          <div class="field">
+            <label>Date (Gregorian)</label>
+            <input type="date" value="${v.lastDate ?? ""}"
+              onchange="state.vaccinations['${key}'].lastDate=this.value||null; renderVaccinations();">
+          </div>
+
+          ${intervalHtml}
+
+          <div class="field">
+            <label>Next due (calculated)</label>
+            <input type="text" value="${nextText}" readonly>
+          </div>
+        </div>
+      ` : ``
+    }
+
+    <div class="results">
+      <div class="item">
+        <div class="top">
+          <div><b>${label}</b></div>
+          <span class="badge ${v.done===true ? "ok" : (v.done===false ? "due" : "high")}">${v.done===true ? "OK" : (v.done===false ? "DUE" : "CONSIDER")}</span>
+        </div>
+        <div class="msg">
+          <div><b>Status:</b> ${status}</div>
+          <div><b>Last date:</b> ${v.lastDate || "—"}</div>
+          <div><b>Next due:</b> ${nextText}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderVaccinations(){
+  // Policy-based tracker (eligibility rules will come later in V2 blocks)
+  const html = `
+    <div class="note">
+      Vaccinations module is <b>session-only</b>. Intervals here are <b>policy-based</b> and editable.
+      Eligibility rules and auto-hiding will be added in later V2 blocks.
+    </div>
+
+    ${vaxRow("influenza", "Influenza vaccine", [1])}
+    ${vaxRow("covid19", "COVID-19 vaccine", [1,2])}
+    ${vaxRow("tdap", "Tdap / Td booster", [10])}
+    ${vaxRow("pneumococcal", "Pneumococcal vaccine", [])}
+    ${vaxRow("hepB", "Hepatitis B vaccine (series)", [])}
+    ${vaxRow("hpv", "HPV vaccine (series)", [])}
+    ${vaxRow("zoster", "Herpes Zoster (Shingles) vaccine", [])}
+
+    <div class="btns">
+      <div class="btn" onclick="go('screening')">Back</div>
+      <div class="btn primary" onclick="go('results')">Go to Results</div>
+      <div class="btn" onclick="go('export')">Export</div>
+    </div>
+  `;
+
+  $("leftPane").innerHTML = html;
+  setStatus("ok","Vaccinations");
+}
+
+/* =========================================================
+   V2 BLOCK 7B
+   Session-only flags + counts
+   ========================================================= */
+
+function addFlag(title, detail){
+  state.flags.push({ title, detail });
+}
+
+function computeFlagsAndCounts(){
+  state.flags = [];
+
+  const d = state.demographics;
+
+  // --- Pregnancy flags
+  if(d.sex === "female" && d.pregnant === true && !d.lmp){
+    addFlag("Pregnancy: LMP missing", "Pregnant = Yes but LMP is empty. GA/EDD cannot be calculated.");
+  }
+
+  // --- Generic screening: done but missing date
+  const g = state.screeningDetails?.generic || {};
+  Object.keys(g).forEach(k=>{
+    const obj = g[k];
+    if(obj && obj.done === true && !obj.lastDate){
+      addFlag(`Screening: ${k} missing date`, "Marked as Done but last date is missing.");
+    }
+  });
+
+  // --- CRC consistency
+  const crc = state.screeningDetails?.crc;
+  if(crc && crc.done === true){
+    if(!crc.lastDate) addFlag("CRC: missing date", "CRC marked as Done but last date is missing.");
+    if(!crc.method) addFlag("CRC: missing method", "CRC marked as Done but method is not selected.");
+  }
+
+  // --- Vaccinations: done but missing date (policy-type only)
+  if(state.vaccinations){
+    Object.keys(state.vaccinations).forEach(k=>{
+      const v = state.vaccinations[k];
+      if(v && v.done === true && v.intervalType === "POLICY" && !v.lastDate){
+        addFlag(`Vaccination: ${k} missing date`, "Marked as Done but date is missing.");
+      }
+    });
+  }
+
+  // --- Pregnancy items: done but missing date
+  if(state.pregnancy && state.pregnancy.items){
+    Object.keys(state.pregnancy.items).forEach(k=>{
+      const it = state.pregnancy.items[k];
+      if(it && it.done === true && !it.date){
+        addFlag(`Pregnancy item: ${k} missing date`, "Marked as Done but date is missing.");
+      }
+    });
+  }
+
+  // Counts (computed on the fly in Results)
+}
+
+function countDueConsiderOk(){
+  const due = state.results.filter(x=>x.level==="DUE").length;
+  const consider = state.results.filter(x=>x.level==="CONSIDER").length;
+  const ok = state.results.filter(x=>x.level==="OK").length;
+  return { due, consider, ok };
+}
+
+function countModuleDue(){
+  // Screening due: based on state.results titles (best-effort)
+  const screeningDue = state.results.filter(x=>x.level==="DUE").length;
+
+  // Vaccinations due: Not done (done=false) OR done=true but overdue (policy with nextDue <= today)
+  let vaxDue = 0;
+  if(state.vaccinations){
+    Object.keys(state.vaccinations).forEach(k=>{
+      const v = state.vaccinations[k];
+      if(!v) return;
+
+      if(v.done === false) { vaxDue++; return; }
+      if(v.done === true && v.intervalType === "POLICY" && v.nextDue && isOnOrBeforeISO(v.nextDue, todayISO())) { vaxDue++; return; }
+    });
+  }
+
+  // Pregnancy due: GA-based due window (if GA exists) and not done
+  let pregDue = 0;
+  if(state.pregnancy && state.pregnancy.items){
+    const ga = (typeof getGAWeeksFromState === "function") ? getGAWeeksFromState() : null;
+    if(ga !== null){
+      // windows must match the ones used in renderPregnancyPanel
+      const windows = {
+        datingScan: [8,13],
+        nipt: [10,13],
+        anomalyScan: [18,22],
+        gdmScreen: [24,28],
+        gbs: [35,37]
+      };
+      Object.keys(windows).forEach(k=>{
+        const it = state.pregnancy.items[k];
+        if(!it) return;
+        const [s,e] = windows[k];
+        const st = gaWindowStatus(ga, it.done, s, e);
+        if(st === "DUE_NOW" || st === "OVERDUE") pregDue++;
+      });
+    }
+  }
+
+  return { screeningDue, vaxDue, pregDue };
+}
+
+
+/* =========================================================
+   V2 BLOCK 3C
+   Pregnancy panel (GA-based) inside Screening
+   ========================================================= */
+
+function pregnancyItemRow(key, label, startW, endW){
+  const p = state.pregnancy.items[key];
+  const ga = getGAWeeksFromState();
+
+  const st = gaWindowStatus(ga, p.done, startW, endW);
+
+  const badge =
+    st === "DONE" ? `<span class="badge ok">OK</span>` :
+    st === "DUE_NOW" ? `<span class="badge due">DUE</span>` :
+    st === "OVERDUE" ? `<span class="badge due">OVERDUE</span>` :
+    st === "NOT_YET" ? `<span class="badge high">NOT YET</span>` :
+    `<span class="badge high">—</span>`;
+
+  const statusText =
+    st === "DONE" ? "Done" :
+    st === "DUE_NOW" ? "Due now" :
+    st === "OVERDUE" ? "Overdue" :
+    st === "NOT_YET" ? "Not yet" :
+    "—";
+
+  return `
+    <div class="bucket">
+      <div>
+        <b>${label}</b><br>
+        <small>Due window: GA ${startW}–${endW} weeks.</small>
+      </div>
+
+      <select onchange="
+        const v=this.value;
+        if(v==='done'){ state.pregnancy.items['${key}'].done=true; }
+        else if(v==='notdone'){ state.pregnancy.items['${key}'].done=false; }
+        else { state.pregnancy.items['${key}'].done=null; }
+
+        if(state.pregnancy.items['${key}'].done!==true){
+          state.pregnancy.items['${key}'].date=null;
+        }
+        renderScreening();
+      ">
+        <option value="unknown" ${p.done===null?"selected":""}>Unknown</option>
+        <option value="done" ${p.done===true?"selected":""}>Done</option>
+        <option value="notdone" ${p.done===false?"selected":""}>Not done</option>
+      </select>
+    </div>
+
+    ${
+      p.done === true ? `
+        <div class="row" style="margin-top:10px">
+          <div class="field">
+            <label>Date performed (Gregorian)</label>
+            <input type="date" value="${p.date ?? ""}"
+              onchange="state.pregnancy.items['${key}'].date=this.value||null; renderScreening();">
+          </div>
+          <div class="field">
+            <label>Status (GA-based)</label>
+            <input type="text" value="${statusText}" readonly>
+          </div>
+          <div class="field">
+            <label>Note</label>
+            <input type="text" value="${p.note || ""}" readonly>
+          </div>
+        </div>
+      ` : `
+        <div class="results">
+          <div class="item">
+            <div class="top">
+              <div><b>${label}</b></div>
+              ${badge}
+            </div>
+            <div class="msg">
+              <div><b>Status:</b> ${statusText}</div>
+              <div><b>Note:</b> ${p.note || "—"}</div>
+            </div>
+          </div>
+        </div>
+      `
+    }
+  `;
+}
+
+function renderPregnancyPanel(){
+  const ga = getGAWeeksFromState();
+  const edd = getEDDFromLMP();
+
+  if(ga === null) return `
+    <div class="note" style="margin-top:12px">
+      Pregnancy pathway is available when Sex = Female, Pregnant = Yes, and LMP is entered.
+    </div>
+  `;
+
+  return `
+    <div class="note" style="margin-top:12px">
+      <b>Pregnancy pathway (GA-based)</b><br>
+      GA (weeks): <b>${ga}</b><br>
+      EDD (from LMP): <b>${edd || "—"}</b><br>
+      Session-only tracking. Windows are policy-based and editable in future V2 blocks.
+    </div>
+
+    ${pregnancyItemRow("datingScan","Dating / NT scan",8,13)}
+    ${pregnancyItemRow("nipt","NIPT / cfDNA",10,13)}
+    ${pregnancyItemRow("anomalyScan","Anomaly scan",18,22)}
+    ${pregnancyItemRow("gdmScreen","GDM screening",24,28)}
+    ${pregnancyItemRow("gbs","GBS screening",35,37)}
+  `;
+}
+/* =========================================================
+   V2 BLOCK 4B
+   Screening UX helpers: eligibility + sorting (Due first)
+   ========================================================= */
+
+function bucketPriority(bucket){
+  // Lower number = higher priority (show earlier)
+  if(bucket === "overdue" || bucket === "never") return 0;
+  if(bucket === "unknown") return 1;
+  if(bucket === "recent") return 2;
+  return 1;
+}
+
+function renderNotEligibleBlock(title, reason){
+  return `
+    <div class="results">
+      <div class="item">
+        <div class="top">
+          <div><b>${title}</b></div>
+          <span class="badge high">N/A</span>
+        </div>
+        <div class="msg">${reason}</div>
+      </div>
+    </div>
+  `;
+}
+
+function pushScreeningSection(list, key, html){
+  const bucket = state.screening[key] || "unknown";
+  list.push({
+    key,
+    pr: bucketPriority(bucket),
+    order: list.length,
+    html
+  });
 }
 
 
