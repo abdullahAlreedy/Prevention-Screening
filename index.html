@@ -415,6 +415,7 @@ const state = {
   },
    ui: {
     showNonEligible: false,
+	 showNonEligible: false,
     exportMode: "progress", // "progress" | "patient"
     policy: "USPSTF"        // "USPSTF" | "LOCAL"
   },
@@ -1537,13 +1538,15 @@ function renderScreening(){
   html += sections.map(x=>x.html).join("");
 
 
-  html += `
-    <div class="btns">
-      <div class="btn" onclick="go('risks')">Back</div>
-      <div class="btn primary" onclick="go('results')">Generate Results</div>
-      <div class="btn" onclick="go('export')">Export</div>
-    </div>
-  `;
+html += `
+  <div class="btns">
+    <div class="btn" onclick="go('risks')">Back</div>
+    <div class="btn" onclick="go('vaccinations')">Next: Vaccinations</div>
+    <div class="btn primary" onclick="go('results')">Generate Results</div>
+    <div class="btn" onclick="go('export')">Export</div>
+  </div>
+`;
+
 
   $("leftPane").innerHTML = html;
   setStatus("ok","Screening");
@@ -2610,21 +2613,74 @@ function vaxRow(key, label, intervalOptions){
 }
 
 function renderVaccinations(){
-  // Policy-based tracker (eligibility rules will come later in V2 blocks)
-  const html = `
+  const d = state.demographics;
+  const age = d.age;
+
+  // --- Simple eligibility rules (editable later)
+  const eligibleAll = true;
+
+  const eligibleInfluenza = eligibleAll;
+  const eligibleCovid = eligibleAll;
+  const eligibleTdap = eligibleAll;
+
+  const eligiblePneumo =
+    (age !== null && age >= 65) ||
+    state.risks.ckd ||
+    state.risks.dm ||
+    state.risks.smoker;
+
+  const eligibleHepB =
+    state.risks.dm ||
+    state.risks.ckd ||
+    false; // keep conservative; extend later if needed
+
+  const eligibleHPV =
+    (age !== null && age <= 26) ||
+    (age !== null && age >= 27 && age <= 45); // shown (shared decision) - keep visible if you want
+
+  const eligibleZoster = (age !== null && age >= 50);
+
+  // Helper to show / hide rows
+  function maybeRow(isEligible, rowHtml){
+    if(isEligible) return rowHtml;
+    if(state.ui.vaxShowNonEligible) return rowHtml + renderNotEligibleBlock("Not eligible", "Hidden by filter (not eligible based on session demographics/risk).");
+    return "";
+  }
+
+  const intro = `
     <div class="note">
-      Vaccinations module is <b>session-only</b>. Intervals here are <b>policy-based</b> and editable.
-      Eligibility rules and auto-hiding will be added in later V2 blocks.
+      <b>Session-only vaccine tracker</b><br>
+      Enter <b>Done</b> + date to calculate <b>next due</b> for boosters.
+      This tool does not store patient data.
     </div>
 
-    ${vaxRow("influenza", "Influenza vaccine", [1])}
-    ${vaxRow("covid19", "COVID-19 vaccine", [1,2])}
-    ${vaxRow("tdap", "Tdap / Td booster", [10])}
-    ${vaxRow("pneumococcal", "Pneumococcal vaccine", [])}
-    ${vaxRow("hepB", "Hepatitis B vaccine (series)", [])}
-    ${vaxRow("hpv", "HPV vaccine (series)", [])}
-    ${vaxRow("zoster", "Herpes Zoster (Shingles) vaccine", [])}
+    <div class="row" style="margin-top:10px">
+      <div class="field">
+        <label>Vaccinations filter</label>
+        <select onchange="state.ui.vaxShowNonEligible = (this.value==='show'); renderVaccinations();">
+          <option value="hide" ${state.ui.vaxShowNonEligible ? "" : "selected"}>Hide non-eligible items</option>
+          <option value="show" ${state.ui.vaxShowNonEligible ? "selected" : ""}>Show non-eligible items</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Note</label>
+        <input type="text" value="Eligibility is simplified (policy-adjustable)" readonly>
+      </div>
+    </div>
+  `;
 
+  let html = intro;
+
+  // Build rows (auto-hide)
+  html += maybeRow(eligibleInfluenza, vaxRow("influenza", "Influenza vaccine", [1]));
+  html += maybeRow(eligibleCovid, vaxRow("covid19", "COVID-19 vaccine", [1,2]));
+  html += maybeRow(eligibleTdap, vaxRow("tdap", "Tdap / Td booster", [10]));
+  html += maybeRow(eligiblePneumo, vaxRow("pneumococcal", "Pneumococcal vaccine", []));
+  html += maybeRow(eligibleHepB, vaxRow("hepB", "Hepatitis B vaccine (series)", []));
+  html += maybeRow(eligibleHPV, vaxRow("hpv", "HPV vaccine (series)", []));
+  html += maybeRow(eligibleZoster, vaxRow("zoster", "Herpes Zoster (Shingles) vaccine", []));
+
+  html += `
     <div class="btns">
       <div class="btn" onclick="go('screening')">Back</div>
       <div class="btn primary" onclick="go('results')">Go to Results</div>
@@ -2635,6 +2691,7 @@ function renderVaccinations(){
   $("leftPane").innerHTML = html;
   setStatus("ok","Vaccinations");
 }
+
 
 /* =========================================================
    V2 BLOCK 7B
